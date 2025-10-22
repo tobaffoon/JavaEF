@@ -61,25 +61,39 @@ public final class ExcelCreditTermsReader {
             switch (key) {
                 case "сумма кредита":
                 case "сумма":
-                    principal = new BigDecimal(val.replaceAll("[^0-9,\\.]","").replace(',', '.'));
+                    if (val.matches(".*\\d.*")) {
+                        principal = new BigDecimal(val.replaceAll("[^0-9,\\.]","").replace(',', '.'));
+                    }
                     break;
                 case "срок (мес)":
                 case "срок":
                 case "срок кредита":
-                    termMonths = Integer.parseInt(val.replaceAll("[^0-9]",""));
+                    if (val.matches(".*\\d.*")) {
+                        termMonths = Integer.parseInt(val.replaceAll("[^0-9]",""));
+                    }
                     break;
                 case "процентная ставка":
                 case "ставка":
-                    annualRate = new BigDecimal(val.replace(',', '.'));
+                    if (val.matches(".*\\d.*")) {
+                        annualRate = new BigDecimal(val.replace(',', '.'));
+                    }
                     break;
                 case "платеж (день)":
                 case "дата платежа":
                 case "платеж":
-                    paymentDay = Integer.parseInt(val.replaceAll("[^0-9]",""));
+                    if (val.matches(".*\\d.*")) {
+                        paymentDay = Integer.parseInt(val.replaceAll("[^0-9]",""));
+                    }
                     break;
                 case "дата предоставления":
                 case "дата выдачи":
-                    startDate = LocalDate.parse(val, df);
+                    if (val.matches(".*\\d.*")) {
+                        try {
+                            startDate = LocalDate.parse(val, df);
+                        } catch (Exception ex) {
+                            // ignore parse errors here
+                        }
+                    }
                     break;
                 case "процентный период":
                 case "период":
@@ -126,12 +140,23 @@ public final class ExcelCreditTermsReader {
                         if (colRate >= 0 && annualRate == null) annualRate = cellAsBigDecimal(r.getCell(colRate));
                         if (colStart >= 0 && startDate == null) startDate = cellAsDate(r.getCell(colStart), df);
                         if (colPeriod >= 0 && interestPeriod == null) {
-                            String v = cellAsString(r.getCell(colPeriod));
+                            String v = cellAsString(r.getCell(colPeriod)).trim();
                             if (v.contains("-")) {
                                 String[] parts = v.split("-", 2);
                                 int s = Integer.parseInt(parts[0].trim());
                                 int e = Integer.parseInt(parts[1].trim());
                                 interestPeriod = new DayOfMonthRangePeriod(s, e);
+                            } else if (v.toLowerCase().endsWith("d")) {
+                                String num = v.substring(0, v.length() - 1).trim();
+                                if (num.matches(".*\\d.*")) {
+                                    int days = Integer.parseInt(num.replaceAll("[^0-9]", ""));
+                                    interestPeriod = new FixedLengthPeriod(days, 0);
+                                }
+                            } else if (v.matches("\\d+d\\+\\d+")) {
+                                String[] parts = v.split("d\\+");
+                                int days = Integer.parseInt(parts[0]);
+                                int offs = Integer.parseInt(parts[1]);
+                                interestPeriod = new FixedLengthPeriod(days, offs);
                             }
                         }
                         if (colPayment >= 0 && paymentDay == null) paymentDay = cellAsInt(r.getCell(colPayment));
