@@ -1,12 +1,10 @@
-package creditpay;
+package creditpay.model;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
 
 /**
- * Реализация: период как диапазон по числам месяца (например, с 26 по 25).
- * В этом варианте дата начисления считается как число endDay следующего месяца
- * относительно предыдущей даты начисления.
+ * Период как диапазон по числам месяца (например, с 26 по 25).
  */
 public final class DayOfMonthRangePeriod implements InterestPeriod {
     private final int startDay; // 1..31

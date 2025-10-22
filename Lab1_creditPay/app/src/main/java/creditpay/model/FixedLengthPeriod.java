@@ -1,10 +1,9 @@
-package creditpay;
+package creditpay.model;
 
 import java.time.LocalDate;
 
 /**
- * Реализация: фиксированная длина периода в днях, с необязательным смещением старта.
- * Метод nextAccrualDate просто прибавляет lengthInDays к предыдущей дате.
+ * Фиксированная длина периода в днях, с необязательным смещением старта.
  */
 public final class FixedLengthPeriod implements InterestPeriod {
     private final int lengthInDays;

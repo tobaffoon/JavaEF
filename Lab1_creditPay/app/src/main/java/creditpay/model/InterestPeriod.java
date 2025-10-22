@@ -1,11 +1,9 @@
-package creditpay;
+package creditpay.model;
 
 import java.time.LocalDate;
 
 /**
  * Интерфейс, описывающий период начисления процентов.
- * Метод nextAccrualDate возвращает дату следующего начисления процентов
- * по дате предыдущего начисления.
  */
 public interface InterestPeriod {
     /**

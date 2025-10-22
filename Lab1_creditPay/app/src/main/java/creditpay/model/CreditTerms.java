@@ -1,4 +1,4 @@
-package creditpay;
+package creditpay.model;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -6,14 +6,6 @@ import java.time.format.DateTimeFormatter;
 
 /**
  * Класс, представляющий условия кредита.
- *
- * Содержит следующие поля:
- * - сумма кредита
- * - срок в месяцах
- * - процентная ставка
- * - процентный период
- * - дата платежа в месяце
- * - дата предоставления кредита
  */
 public final class CreditTerms {
     private BigDecimal principal; // сумма кредита в рублях
@@ -31,6 +23,14 @@ public final class CreditTerms {
         this.interestPeriod = interestPeriod;
         this.paymentDayOfMonth = paymentDayOfMonth;
         this.startDate = startDate;
+    }
+
+    /**
+     * Public factory to create CreditTerms from external utilities.
+     */
+    public static CreditTerms of(BigDecimal principal, int termMonths, BigDecimal annualRatePercent,
+                                 InterestPeriod interestPeriod, int paymentDayOfMonth, LocalDate startDate) {
+        return new CreditTerms(principal, termMonths, annualRatePercent, interestPeriod, paymentDayOfMonth, startDate);
     }
 
     public static CreditTerms sample() {
@@ -80,6 +80,4 @@ public final class CreditTerms {
         sb.append("Дата предоставления: ").append(startDate.format(df));
         return sb.toString();
     }
-
-    // InterestPeriod, DayOfMonthRangePeriod and FixedLengthPeriod moved to separate files.
 }
