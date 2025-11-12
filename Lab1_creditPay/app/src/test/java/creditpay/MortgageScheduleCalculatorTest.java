@@ -1,8 +1,9 @@
-package creditpay.model;
+package creditpay;
 
 import org.junit.jupiter.api.Test;
 
-import creditpay.calculators.MortgageScheduleCalculator;
+import creditpay.MortgageScheduleCalculator;
+import creditpay.model.CreditTerms;
 
 import java.util.List;
 

@@ -1,4 +1,4 @@
-package creditpay.calculators;
+package creditpay;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
