@@ -16,7 +16,7 @@ public final class DayOfMonthRangePeriod implements InterestPeriod {
         this.paymentDay = paymentDay;
     }
 
-    public int getpaymentDay() {
+    public int getPaymentDay() {
         return paymentDay;
     }
 

@@ -8,7 +8,7 @@ import java.time.LocalDate;
 public interface InterestPeriod {
     /**
      * Возвращает дату следующего начисления процентов, исходя из даты предыдущего.
-     * @param previousAccrualDate дата предыдущего начисления (не null)
+     * @param previousAccrualDate дата предыдущего начисления
      * @return следующая дата начисления
      */
     LocalDate nextAccrualDate(LocalDate previousAccrualDate);

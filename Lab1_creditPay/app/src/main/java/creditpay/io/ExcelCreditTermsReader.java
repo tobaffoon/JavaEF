@@ -20,17 +20,12 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Iterator;
 import java.util.List;
 
 /**
  * Утилита для чтения условий кредита из Excel-файлов разных простых форматов.
- *
- * Поддерживает варианты, где поля находятся в строках вида "Ключ" | "Значение"
- * и варианты табличного вида (имя столбца).
- *
- * Это минимальная реализация, ориентированная на локальные тесты; можно расширить
- * под конкретные шаблоны Excel.
  */
 public final class ExcelCreditTermsReader {
     private static int _headerNotFound = -1;
@@ -40,34 +35,36 @@ public final class ExcelCreditTermsReader {
         "сумма кредита",
         "сумма");
     private static final List<String> _termMonthsKeys = List.of(
-        "срок (мес)",
         "срок, мес",
         "срок",
+        "срок кредита, мес",
         "срок кредита");
     private static final List<String> _annualRateKeys = List.of(
         "процентная ставка",
         "ставка");
     private static final List<String> _paymentDayKeys = List.of(
-        "платеж (день)",
+        "платеж, день",
         "дата платежа",
         "платеж");
     private static final List<String> _interestPeriodKeys = List.of(
+        "процентный период, дни",
+        "период, дни",
         "процентный период",
         "период");
     private static final List<String> _startDateKeys = List.of(
         "дата предоставления",
+        "дата предоставления кредита",
+        "дата выдачи кредита",
         "дата выдачи");
 
     private ExcelCreditTermsReader() {}
 
-    public static CreditTerms read(InputStream in) throws IOException {
+    public static CreditTerms read(InputStream in) throws Exception {
         try (Workbook wb = WorkbookFactory.create(in)) {
             Sheet sheet = wb.getSheetAt(0);
             return parseSheet(sheet);
-        } catch (IOException e) {
-            throw e;
         } catch (Exception e) {
-            throw new IOException("Failed to read Excel", e);
+            throw e;
         }
     }
 
@@ -89,7 +86,7 @@ public final class ExcelCreditTermsReader {
         int colPeriod = findColumn(headerRow, _interestPeriodKeys, formatter);
         int colPaymentDay = findColumn(headerRow, _paymentDayKeys, formatter);
 
-        if( colPrincipal == _headerNotFound || colTerm == _headerNotFound ||
+        if(colPrincipal == _headerNotFound || colTerm == _headerNotFound ||
             colRate == _headerNotFound || colStart == _headerNotFound ||
             colPeriod == _headerNotFound && colPaymentDay == _headerNotFound) {
                 throw new InvalidFormatException("В таблице " + sheet.getSheetName() + " не найдены необходимые столбцы");
@@ -117,9 +114,10 @@ public final class ExcelCreditTermsReader {
         }
 
         try {
-            Cell startDateCell = valueRow.getCell(colStart);
-            startDate = startDateCell.getLocalDateTimeCellValue().toLocalDate();
-        } catch (NumberFormatException ex){
+            String rawValue = formatter.formatCellValue(valueRow.getCell(colStart));
+            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+            startDate = LocalDate.parse(rawValue, dateFormatter);
+        } catch (DateTimeParseException ex){
             throw new InvalidFormatException("Некорректное значение даты предоставления кредита");
         }
 
