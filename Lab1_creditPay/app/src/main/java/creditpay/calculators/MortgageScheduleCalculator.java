@@ -1,10 +1,12 @@
-package creditpay.model;
+package creditpay.calculators;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+
+import creditpay.model.CreditTerms;
 
 /**
  * Utility to calculate mortgage repayment schedule for differentiated and annuity payments.
