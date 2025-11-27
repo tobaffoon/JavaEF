@@ -28,7 +28,7 @@ public final class CreditTerms {
         int termMonths = 276;
         BigDecimal annualRatePercent = new BigDecimal("7.45");
         LocalDate startDate = LocalDate.of(2022, 9, 22);
-        InterestPeriod interestPeriod = new DayOfMonthRangePeriod(26);
+        InterestPeriod interestPeriod = new InterestPeriod(26);
         return new CreditTerms(principal, termMonths, annualRatePercent, interestPeriod, startDate);
     }
 

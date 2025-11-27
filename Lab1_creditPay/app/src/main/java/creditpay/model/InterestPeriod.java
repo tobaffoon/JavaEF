@@ -1,18 +1,32 @@
 package creditpay.model;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 
 /**
- * Интерфейс, описывающий период начисления процентов.
+ * Период как диапазон по числам месяца (например, с 26 по 25).
  */
-public interface InterestPeriod {
-    /**
-     * Возвращает дату следующего начисления процентов, исходя из даты предыдущего.
-     * @param previousAccrualDate дата предыдущего начисления
-     * @return следующая дата начисления
-     */
-    LocalDate nextAccrualDate(LocalDate previousAccrualDate);
+public final class InterestPeriod {
+    private final int paymentDay;
 
-    @Override
-    String toString();
+    public InterestPeriod(int paymentDay) {
+        if (paymentDay < 1 || paymentDay > 31) {
+            throw new IllegalArgumentException("paymentDay must be 1..31");
+        }
+        this.paymentDay = paymentDay;
+    }
+
+    public int getPaymentDay() {
+        return paymentDay;
+    }
+
+    public LocalDate nextAccrualDate(LocalDate previousAccrualDate) {
+        if (previousAccrualDate == null) {
+            throw new IllegalArgumentException("previousAccrualDate must not be null");
+        }
+        LocalDate candidate = previousAccrualDate.plusMonths(1);
+        YearMonth ym = YearMonth.from(candidate);
+        int day = Math.min(paymentDay, ym.lengthOfMonth());
+        return ym.atDay(day);
+    }
 }

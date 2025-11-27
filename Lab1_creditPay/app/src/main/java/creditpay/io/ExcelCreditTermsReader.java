@@ -1,27 +1,21 @@
 package creditpay.io;
 
 import creditpay.model.CreditTerms;
-import creditpay.model.DayOfMonthRangePeriod;
-import creditpay.model.FixedLengthPeriod;
 import creditpay.model.InterestPeriod;
 
 import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
 import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.ss.usermodel.DateUtil;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -46,11 +40,6 @@ public final class ExcelCreditTermsReader {
         "платеж, день",
         "дата платежа",
         "платеж");
-    private static final List<String> _interestPeriodKeys = List.of(
-        "процентный период, дни",
-        "период, дни",
-        "процентный период",
-        "период");
     private static final List<String> _startDateKeys = List.of(
         "дата предоставления",
         "дата предоставления кредита",
@@ -83,12 +72,11 @@ public final class ExcelCreditTermsReader {
         int colTerm = findColumn(headerRow, _termMonthsKeys, formatter);
         int colRate = findColumn(headerRow, _annualRateKeys, formatter);
         int colStart = findColumn(headerRow, _startDateKeys, formatter);
-        int colPeriod = findColumn(headerRow, _interestPeriodKeys, formatter);
         int colPaymentDay = findColumn(headerRow, _paymentDayKeys, formatter);
 
         if(colPrincipal == _headerNotFound || colTerm == _headerNotFound ||
             colRate == _headerNotFound || colStart == _headerNotFound ||
-            colPeriod == _headerNotFound && colPaymentDay == _headerNotFound) {
+            colPaymentDay == _headerNotFound) {
                 throw new InvalidFormatException("В таблице " + sheet.getSheetName() + " не найдены необходимые столбцы");
         }
 
@@ -121,24 +109,12 @@ public final class ExcelCreditTermsReader {
             throw new InvalidFormatException("Некорректное значение даты предоставления кредита");
         }
 
-        if(colPeriod != _headerNotFound) {
-            try {
-                String rawValue = formatter.formatCellValue(valueRow.getCell(colPeriod));
-                int period = Integer.parseInt(rawValue);
-                interestPeriod = new FixedLengthPeriod(period);
-            } catch (NumberFormatException ex){
-                throw new InvalidFormatException("Некорректное значение процентного периода");
-            }
-        }
-        else{
-            
-            try {
-                String rawValue = formatter.formatCellValue(valueRow.getCell(colPaymentDay));
-                int paymentDay = Integer.parseInt(rawValue);
-                interestPeriod = new DayOfMonthRangePeriod(paymentDay);
-            } catch (NumberFormatException ex){
-                throw new InvalidFormatException("Некорректное значение числа платежа");
-            }
+        try {
+            String rawValue = formatter.formatCellValue(valueRow.getCell(colPaymentDay));
+            int paymentDay = Integer.parseInt(rawValue);
+            interestPeriod = new InterestPeriod(paymentDay);
+        } catch (NumberFormatException ex){
+            throw new InvalidFormatException("Некорректное значение числа платежа");
         }
 
         return new CreditTerms(principal, termMonths, annualRate, interestPeriod, startDate);
