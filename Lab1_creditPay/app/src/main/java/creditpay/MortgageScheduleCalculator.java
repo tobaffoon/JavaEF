@@ -29,10 +29,11 @@ public final class MortgageScheduleCalculator {
         BigDecimal monthlyPrincipal = params.principal.divide(BigDecimal.valueOf(params.months), _calculationScale, RoundingMode.HALF_UP);
         LocalDate previousAccrualDate = params.startDate;
         BigDecimal remaining = params.principal;
+        int daysOfBorrowing = 0;
         
-        for (int m = 1; m <= params.months; m++) {
+        for (int m = 0; m < params.months; m++) {
             LocalDate currentAccrualDate = params.interestPeriod.nextAccrualDate(previousAccrualDate);
-            int daysOfBorrowing = (int) ChronoUnit.DAYS.between(previousAccrualDate, currentAccrualDate);
+            daysOfBorrowing += (int) ChronoUnit.DAYS.between(previousAccrualDate, currentAccrualDate);
             
             BigDecimal interest = remaining.multiply(params.monthlyRate);
             BigDecimal totalPayment = monthlyPrincipal.add(interest);
@@ -56,10 +57,11 @@ public final class MortgageScheduleCalculator {
         annuityCoeff = params.monthlyRate.multiply((params.monthlyRate.add(BigDecimal.ONE)).pow(params.months)).divide(annuityCoeff, _calculationScale, RoundingMode.HALF_UP);
         BigDecimal monthlyPayment = params.principal.multiply(annuityCoeff);
         BigDecimal remaining = params.principal;
+        int daysOfBorrowing = 0;
         
-        for (int m = 1; m <= params.months; m++) {
+        for (int m = 0; m < params.months; m++) {
             LocalDate currentAccrualDate = params.interestPeriod.nextAccrualDate(previousAccrualDate);
-            int daysOfBorrowing = (int) ChronoUnit.DAYS.between(previousAccrualDate, currentAccrualDate);
+            daysOfBorrowing += (int) ChronoUnit.DAYS.between(previousAccrualDate, currentAccrualDate);
             
             BigDecimal interest = remaining.multiply(params.monthlyRate);
             BigDecimal principalPart = monthlyPayment.subtract(interest);
