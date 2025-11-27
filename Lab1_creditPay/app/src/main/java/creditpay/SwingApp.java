@@ -1,30 +1,425 @@
 package creditpay;
 
+import creditpay.io.ExcelCreditTermsReader;
+import creditpay.io.ExcelPaymentWriter;
+import creditpay.model.CreditTerms;
+import creditpay.model.Payment;
+
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
+import javax.swing.table.TableCellRenderer;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.math.BigDecimal;
+import java.text.NumberFormat;
+import java.util.List;
+import java.util.Locale;
 
-/**
- * Minimal Swing application example.
- */
 public class SwingApp {
+    private static final Color SUCCESSFUL_TEXT_COLOR = new Color(0, 120, 0);
+    private static final File DEFAULT_INPUT_DIR = new File("build/resources/main/excel");
+    private static final File DEFAULT_OUTPUT_DIR = new File("build/output");
+
+    private JFrame frame;
+    private JLabel fileLabel;
+    private JLabel statusLabel;
+    private JRadioButton differentiatedRadio;
+    private JRadioButton annuityRadio;
+    private JScrollPane scrollPane;
+    private DefaultTableModel tableModel;
+    private JButton calculateButton;
+    private JButton saveButton;
+    private JPanel chartPanel;
+    private CreditTerms creditTerms;
+    private List<Payment> currentPayments;
+
     public static void main(String[] args) {
-        // Schedule UI creation on the EDT
-        SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("Sample Swing App");
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setLayout(new BorderLayout());
+        SwingUtilities.invokeLater(() -> new SwingApp().createAndShowGUI());
+    }
 
-            JLabel label = new JLabel("Hello from Swing", SwingConstants.CENTER);
-            label.setFont(label.getFont().deriveFont(18f));
-            frame.add(label, BorderLayout.CENTER);
+    private void createAndShowGUI() {
+        frame = new JFrame("Mortgage Calculator");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLayout(new BorderLayout(10, 10));
 
-            JButton btn = new JButton("Close");
-            btn.addActionListener(e -> frame.dispose());
-            frame.add(btn, BorderLayout.SOUTH);
+        // Top panel - File selection
+        JPanel topPanel = createTopPanel();
+        frame.add(topPanel, BorderLayout.NORTH);
 
-            frame.setSize(300, 200);
-            frame.setLocationRelativeTo(null);
-            frame.setVisible(true);
-        });
+        // Center panel - Main content (payment method + table + chart)
+        JPanel centerPanel = createCenterPanel();
+        frame.add(centerPanel, BorderLayout.CENTER);
+
+        // Bottom panel - Status and buttons
+        JPanel bottomPanel = createBottomPanel();
+        frame.add(bottomPanel, BorderLayout.SOUTH);
+
+        frame.setSize(1200, 800);
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
+    }
+
+    private JPanel createTopPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        panel.setBorder(BorderFactory.createTitledBorder("Step 1: Load Credit Terms"));
+
+        JButton browseButton = new JButton("Select Excel File");
+        browseButton.addActionListener(this::browseFile);
+        panel.add(browseButton);
+
+        fileLabel = new JLabel("No file selected");
+        fileLabel.setForeground(Color.GRAY);
+        panel.add(fileLabel);
+
+        return panel;
+    }
+
+    private JPanel createCenterPanel() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        // Left panel - Payment method selection
+        JPanel methodPanel = createMethodPanel();
+        panel.add(methodPanel, BorderLayout.WEST);
+
+        // Right panel - Table and Chart
+        JPanel rightPanel = new JPanel(new BorderLayout(10, 10));
+
+        // Table
+        JPanel tablePanel = createTablePanel();
+        rightPanel.add(tablePanel, BorderLayout.CENTER);
+
+        // Chart
+        chartPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                if (currentPayments != null && !currentPayments.isEmpty()) {
+                    drawChart(g);
+                }
+            }
+        };
+        chartPanel.setBackground(Color.WHITE);
+        chartPanel.setBorder(BorderFactory.createTitledBorder("Payment Schedule Chart"));
+        chartPanel.setPreferredSize(new Dimension(0, 200));
+        rightPanel.add(chartPanel, BorderLayout.SOUTH);
+
+        panel.add(rightPanel, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel createMethodPanel() {
+        JPanel panel = new JPanel(new GridLayout(4, 1, 10, 10));
+        panel.setBorder(BorderFactory.createTitledBorder("Step 2: Select Payment Method"));
+
+        differentiatedRadio = new JRadioButton("Differentiated Payments", true);
+        annuityRadio = new JRadioButton("Annuity Payments", false);
+
+        ButtonGroup group = new ButtonGroup();
+        group.add(differentiatedRadio);
+        group.add(annuityRadio);
+
+        panel.add(differentiatedRadio);
+        panel.add(annuityRadio);
+
+        calculateButton = new JButton("Calculate Schedule");
+        calculateButton.setEnabled(false);
+        calculateButton.addActionListener(this::calculateSchedule);
+        panel.add(calculateButton);
+
+        saveButton = new JButton("Save to Excel");
+        saveButton.setEnabled(false);
+        saveButton.addActionListener(this::saveToExcel);
+        panel.add(saveButton);
+
+        return panel;
+    }
+
+    private JPanel createTablePanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createTitledBorder("Step 3: Payment Schedule Table"));
+
+        // Create table with actual headers but they will be hidden initially
+        tableModel = new DefaultTableModel(
+            new String[]{
+                ExcelPaymentWriter.HEADER_NUMBER,
+                ExcelPaymentWriter.HEADER_DAYS,
+                ExcelPaymentWriter.HEADER_DATE,
+                ExcelPaymentWriter.HEADER_TOTAL,
+                ExcelPaymentWriter.HEADER_INTEREST,
+                ExcelPaymentWriter.HEADER_PRINCIPAL,
+                ExcelPaymentWriter.HEADER_REMAINING
+            },
+            0
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+
+        JTable paymentTable = new JTable(tableModel);
+        paymentTable.setFont(new Font("Monospaced", Font.PLAIN, 11));
+        paymentTable.getTableHeader().setReorderingAllowed(false);
+        paymentTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        
+        // Configure header with word wrap
+        JTableHeader header = paymentTable.getTableHeader();
+        header.setDefaultRenderer(new WrappingHeaderRenderer());
+        header.setPreferredSize(new Dimension(header.getWidth(), 60));
+
+        scrollPane = new JScrollPane(paymentTable);
+        scrollPane.setVisible(false);
+        panel.add(scrollPane, BorderLayout.CENTER);
+
+        hideTable();
+
+        return panel;
+    }
+
+    private void hideTable() {
+        scrollPane.setVisible(false);
+    }
+
+    private void showTable() {
+        scrollPane.setVisible(true);
+    }
+
+    private JPanel createBottomPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        panel.setBorder(BorderFactory.createEtchedBorder());
+
+        statusLabel = new JLabel("Status: Ready");
+        statusLabel.setForeground(Color.BLUE);
+        panel.add(statusLabel);
+
+        return panel;
+    }
+
+    private void browseFile(ActionEvent e) {
+        JFileChooser fileChooser = new JFileChooser(DEFAULT_INPUT_DIR);
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Excel Files (*.xlsx)", "xlsx"));
+
+        int result = fileChooser.showOpenDialog(frame);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            loadCreditTerms(selectedFile);
+        }
+    }
+
+    private void loadCreditTerms(File file) {
+        try {
+            statusLabel.setText("Status: Loading file...");
+            statusLabel.setForeground(Color.BLUE);
+            frame.repaint();
+
+            try (InputStream in = new FileInputStream(file)) {
+                creditTerms = ExcelCreditTermsReader.read(in);
+            }
+
+            fileLabel.setText(file.getName() + " ✓");
+            fileLabel.setForeground(SUCCESSFUL_TEXT_COLOR);
+            calculateButton.setEnabled(true);
+            saveButton.setEnabled(false);
+
+            statusLabel.setText("Status: File loaded successfully. Principal: " +
+                    formatCurrency(creditTerms.getPrincipal()) +
+                    ", Term: " + creditTerms.getTermMonths() + " months, Rate: " +
+                    creditTerms.getAnnualRatePercent() + "%");
+            statusLabel.setForeground(SUCCESSFUL_TEXT_COLOR);
+        } catch (Exception ex) {
+            creditTerms = null;
+            currentPayments = null;
+            tableModel.setRowCount(0);
+            hideTable();
+            chartPanel.repaint();
+            
+            fileLabel.setText("Error reading file!");
+            fileLabel.setForeground(Color.RED);
+            calculateButton.setEnabled(false);
+            saveButton.setEnabled(false);
+            
+            statusLabel.setText("Status: Error - " + ex.getMessage());
+            statusLabel.setForeground(Color.RED);
+            JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage(), "Load Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void calculateSchedule(ActionEvent e) {
+        try {
+            if (creditTerms == null) {
+                JOptionPane.showMessageDialog(frame, "Please select a file first", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            statusLabel.setText("Status: Calculating...");
+            statusLabel.setForeground(Color.BLUE);
+            frame.repaint();
+
+            if (differentiatedRadio.isSelected()) {
+                currentPayments = MortgageScheduleCalculator.differentiated(creditTerms);
+                statusLabel.setText("Status: Differentiated payment schedule calculated (" + currentPayments.size() + " payments)");
+            } else {
+                currentPayments = MortgageScheduleCalculator.annuity(creditTerms);
+                statusLabel.setText("Status: Annuity payment schedule calculated (" + currentPayments.size() + " payments)");
+            }
+            statusLabel.setForeground(SUCCESSFUL_TEXT_COLOR);
+
+            updateTable();
+            saveButton.setEnabled(true);
+            chartPanel.repaint();
+        } catch (Exception ex) {
+            statusLabel.setText("Status: Error - " + ex.getMessage());
+            statusLabel.setForeground(Color.RED);
+            JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage(), "Calculation Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void updateTable() {
+        tableModel.setRowCount(0);
+        
+        // Show columns when table is populated
+        showTable();
+
+        int rowNum = 1;
+        for (Payment payment : currentPayments) {
+            tableModel.addRow(new Object[]{
+                    rowNum++,
+                    payment.daysOfBorrowing,
+                    payment.paymentDate,
+                    formatCurrency(payment.totalPayment),
+                    formatCurrency(payment.interest),
+                    formatCurrency(payment.principalRepaid),
+                    formatCurrency(payment.remainingDebt)
+            });
+        }
+    }
+
+    private void saveToExcel(ActionEvent e) {
+        if (currentPayments == null || currentPayments.isEmpty()) {
+            JOptionPane.showMessageDialog(frame, "No schedule to save", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        JFileChooser fileChooser = new JFileChooser(DEFAULT_OUTPUT_DIR);
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Excel Files (*.xlsx)", "xlsx"));
+        fileChooser.setSelectedFile(new File("payment_schedule.xlsx"));
+
+        int result = fileChooser.showSaveDialog(frame);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            File selectedFile = fileChooser.getSelectedFile();
+            try {
+                statusLabel.setText("Status: Saving...");
+                statusLabel.setForeground(Color.BLUE);
+                frame.repaint();
+
+                try (OutputStream out = new FileOutputStream(selectedFile)) {
+                    ExcelPaymentWriter.write(currentPayments, out);
+                }
+
+                statusLabel.setText("Status: File saved successfully to " + selectedFile.getName());
+                statusLabel.setForeground(SUCCESSFUL_TEXT_COLOR);
+                JOptionPane.showMessageDialog(frame, "Schedule saved to " + selectedFile.getAbsolutePath(), "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception ex) {
+                statusLabel.setText("Status: Error - " + ex.getMessage());
+                statusLabel.setForeground(Color.RED);
+                JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage(), "Save Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void drawChart(Graphics g) {
+        if (currentPayments == null || currentPayments.isEmpty()) {
+            return;
+        }
+
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        int width = chartPanel.getWidth();
+        int height = chartPanel.getHeight();
+        int padding = 40;
+        int chartWidth = width - 2 * padding;
+        int chartHeight = height - 2 * padding;
+
+        // Find max payment amount for scaling
+        BigDecimal maxPayment = currentPayments.stream()
+                .map(p -> p.totalPayment)
+                .max(BigDecimal::compareTo)
+                .orElse(BigDecimal.ONE);
+        double maxValue = maxPayment.doubleValue();
+
+        g2d.setColor(Color.BLACK);
+        g2d.drawLine(padding, height - padding, width - padding, height - padding); // X-axis
+        g2d.drawLine(padding, padding, padding, height - padding); // Y-axis
+
+        int numPayments = currentPayments.size();
+        double barWidth = (double) chartWidth / numPayments;
+
+        // Draw bars
+        for (int i = 0; i < numPayments; i++) {
+            Payment payment = currentPayments.get(i);
+            double totalHeight = (payment.totalPayment.doubleValue() / maxValue) * chartHeight;
+            double principalHeight = (payment.principalRepaid.doubleValue() / maxValue) * chartHeight;
+
+            int x = padding + (int) (i * barWidth);
+            int barHeightTotal = (int) totalHeight;
+
+            // Interest (red)
+            int interestHeight = (int) ((payment.interest.doubleValue() / maxValue) * chartHeight);
+            g2d.setColor(new Color(255, 0, 0, 150));
+            g2d.fillRect(x, height - padding - barHeightTotal, (int) barWidth - 2, interestHeight);
+
+            // Principal (blue)
+            g2d.setColor(new Color(0, 0, 255, 150));
+            g2d.fillRect(x, height - padding - barHeightTotal + interestHeight, (int) barWidth - 2, (int) principalHeight);
+        }
+
+        // Legend
+        g2d.setColor(Color.BLACK);
+        g2d.setFont(new Font("Arial", Font.PLAIN, 12));
+        g2d.drawString("Principal", width - 150, 20);
+        g2d.fillRect(width - 160, 8, 10, 10);
+        g2d.setColor(new Color(0, 0, 255, 150));
+        g2d.fillRect(width - 159, 9, 8, 8);
+
+        g2d.setColor(Color.BLACK);
+        g2d.drawString("Interest", width - 150, 40);
+        g2d.fillRect(width - 160, 28, 10, 10);
+        g2d.setColor(new Color(255, 0, 0, 150));
+        g2d.fillRect(width - 159, 29, 8, 8);
+    }
+
+    private String formatCurrency(BigDecimal value) {
+        NumberFormat format = NumberFormat.getInstance(Locale.US);
+        format.setMaximumFractionDigits(2);
+        format.setMinimumFractionDigits(2);
+        return format.format(value);
+    }
+
+    private static class WrappingHeaderRenderer extends JLabel implements TableCellRenderer {
+        WrappingHeaderRenderer() {
+            setOpaque(true);
+            setBackground(UIManager.getColor("TableHeader.background"));
+            setForeground(UIManager.getColor("TableHeader.foreground"));
+            setFont(UIManager.getFont("TableHeader.font"));
+            setHorizontalAlignment(JLabel.CENTER);
+            setVerticalAlignment(JLabel.TOP);
+            setBorder(UIManager.getBorder("TableHeader.cellBorder"));
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                boolean isSelected, boolean hasFocus, int row, int column) {
+            setText("<html><div style='text-align: center;'>" + value + "</div></html>");
+            return this;
+        }
     }
 }

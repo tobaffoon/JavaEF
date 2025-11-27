@@ -19,6 +19,15 @@ import java.util.List;
 public final class ExcelPaymentWriter {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
+    public static final String HEADER_NUMBER = "№ п/п";
+    public static final String HEADER_DAYS = "Кол-во дней пользования заемными средствами";
+    public static final String HEADER_DATE = "Дата платежа";
+    public static final String HEADER_TOTAL = "Общая сумма платежа";
+    public static final String HEADER_GROUP = "В том числе";
+    public static final String HEADER_INTEREST = "Сумма процентов";
+    public static final String HEADER_PRINCIPAL = "Сумма погашаемого долга";
+    public static final String HEADER_REMAINING = "Остаток задолженности";
+
     private ExcelPaymentWriter() {}
 
     /**
@@ -37,41 +46,41 @@ public final class ExcelPaymentWriter {
 
             Row mainHeaderRow = sheet.createRow(0);
             var cell0 = mainHeaderRow.createCell(0);
-            cell0.setCellValue("№ п/п");
+            cell0.setCellValue(HEADER_NUMBER);
             cell0.setCellStyle(headerStyle);
             sheet.addMergedRegion(new CellRangeAddress(0, 1, 0, 0));
 
             var cell1 = mainHeaderRow.createCell(1);
-            cell1.setCellValue("Кол-во дней пользования заемными средствами");
+            cell1.setCellValue(HEADER_DAYS);
             cell1.setCellStyle(headerStyle);
             sheet.addMergedRegion(new CellRangeAddress(0, 1, 1, 1));
 
             var cell2 = mainHeaderRow.createCell(2);
-            cell2.setCellValue("Дата платежа");
+            cell2.setCellValue(HEADER_DATE);
             cell2.setCellStyle(headerStyle);
             sheet.addMergedRegion(new CellRangeAddress(0, 1, 2, 2));
 
             var cell3 = mainHeaderRow.createCell(3);
-            cell3.setCellValue("Общая сумма платежа");
+            cell3.setCellValue(HEADER_TOTAL);
             cell3.setCellStyle(headerStyle);
             sheet.addMergedRegion(new CellRangeAddress(0, 1, 3, 3));
 
             var cellMerged = mainHeaderRow.createCell(4);
-            cellMerged.setCellValue("В том числе");
+            cellMerged.setCellValue(HEADER_GROUP);
             cellMerged.setCellStyle(headerStyle);
             sheet.addMergedRegion(new CellRangeAddress(0, 0, 4, 6));
 
             Row subHeaderRow = sheet.createRow(1);
             var subCell4 = subHeaderRow.createCell(4);
-            subCell4.setCellValue("Сумма процентов");
+            subCell4.setCellValue(HEADER_INTEREST);
             subCell4.setCellStyle(headerStyle);
 
             var subCell5 = subHeaderRow.createCell(5);
-            subCell5.setCellValue("Сумма погашаемого долга");
+            subCell5.setCellValue(HEADER_PRINCIPAL);
             subCell5.setCellStyle(headerStyle);
 
             var subCell6 = subHeaderRow.createCell(6);
-            subCell6.setCellValue("Остаток задолженности");
+            subCell6.setCellValue(HEADER_REMAINING);
             subCell6.setCellStyle(headerStyle);
 
             CellStyle dateStyle = wb.createCellStyle();
