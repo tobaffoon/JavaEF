@@ -39,8 +39,8 @@ public class CalculatorRegistry {
                             Class<?> clazz = classLoader.loadClass(className);
                             
                             if (isConcreteMortgageCalculator(clazz)) {
-                                MortgageScheduleCalculator instance = 
-                                    (MortgageScheduleCalculator) clazz.getDeclaredConstructor().newInstance();
+                                MortgageScheduleCalculator instance =
+                                    getCalculatorInstance((Class<? extends MortgageScheduleCalculator>) clazz);
                                 calculators.add(instance);
                             }
                         } catch (Exception e) {
@@ -53,6 +53,14 @@ public class CalculatorRegistry {
         }
         
         return calculators;
+    }
+
+    private static MortgageScheduleCalculator getCalculatorInstance(Class<? extends MortgageScheduleCalculator> clazz) {
+        try {
+            return clazz.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to instantiate calculator: " + clazz.getName(), e);
+        }
     }
 
     /**
