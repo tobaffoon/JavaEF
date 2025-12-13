@@ -3,6 +3,7 @@ package creditpay;
 import creditpay.calculator.MortgageScheduleCalculator;
 import creditpay.calculator.DifferentiatedCalculator;
 import creditpay.calculator.AnnuityCalculator;
+import creditpay.calculator.CalculatorRegistry;
 import creditpay.io.ExcelCreditTermsReader;
 import creditpay.io.ExcelPaymentWriter;
 import creditpay.model.CreditTerms;
@@ -24,6 +25,8 @@ import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.HashMap;
 
 public class SwingApp {
     private static final Color SUCCESSFUL_TEXT_COLOR = new Color(0, 120, 0);
@@ -33,8 +36,6 @@ public class SwingApp {
     private JFrame frame;
     private JLabel fileLabel;
     private JLabel statusLabel;
-    private JRadioButton differentiatedRadio;
-    private JRadioButton annuityRadio;
     private JScrollPane scrollPane;
     private DefaultTableModel tableModel;
     private JButton calculateButton;
@@ -42,6 +43,8 @@ public class SwingApp {
     private JPanel chartPanel;
     private CreditTerms creditTerms;
     private List<Payment> currentPayments;
+    private ButtonGroup methodButtonsGroup;
+    private Map<JRadioButton, MortgageScheduleCalculator> methodsMap;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new SwingApp().createAndShowGUI());
@@ -67,6 +70,21 @@ public class SwingApp {
         frame.setSize(1200, 800);
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
+    }
+
+    private void initializeMethods(){
+        methodsMap = new HashMap<JRadioButton, MortgageScheduleCalculator>();
+        var result = CalculatorRegistry.discoverCalculators();
+
+        methodButtonsGroup = new ButtonGroup();
+        for (var method : result) {
+            JRadioButton radioButton = new JRadioButton(method.getDisplayName());
+            if(methodButtonsGroup.getButtonCount() == 0){
+                radioButton.setSelected(true);
+            }
+            methodButtonsGroup.add(radioButton);
+            methodsMap.put(radioButton, method);
+        }
     }
 
     private JPanel createTopPanel() {
@@ -117,18 +135,14 @@ public class SwingApp {
     }
 
     private JPanel createMethodPanel() {
+        initializeMethods();
+
         JPanel panel = new JPanel(new GridLayout(4, 1, 10, 10));
         panel.setBorder(BorderFactory.createTitledBorder("Step 2: Select Payment Method"));
 
-        differentiatedRadio = new JRadioButton("Differentiated Payments", true);
-        annuityRadio = new JRadioButton("Annuity Payments", false);
-
-        ButtonGroup group = new ButtonGroup();
-        group.add(differentiatedRadio);
-        group.add(annuityRadio);
-
-        panel.add(differentiatedRadio);
-        panel.add(annuityRadio);
+        for (JRadioButton button : methodsMap.keySet()) {
+            panel.add(button);
+        }
 
         calculateButton = new JButton("Calculate Schedule");
         calculateButton.setEnabled(false);
@@ -262,14 +276,20 @@ public class SwingApp {
             statusLabel.setForeground(Color.BLUE);
             frame.repaint();
 
-            MortgageScheduleCalculator calculator;
-            if (differentiatedRadio.isSelected()) {
-                calculator = new DifferentiatedCalculator();
-            } else {
-                calculator = new AnnuityCalculator();
+            MortgageScheduleCalculator calculator = null;
+            for (Map.Entry<JRadioButton, MortgageScheduleCalculator> entry : methodsMap.entrySet()) {
+                if (entry.getKey().isSelected()) {
+                    calculator = entry.getValue();
+                    break;
+                }
             }
-                currentPayments = calculator.calculateSchedule(creditTerms);
-                statusLabel.setText("Status: Payment schedule calculated (" + currentPayments.size() + " payments)");
+
+            if (calculator == null) {
+                throw new Exception("Payment method is not implemented");
+            }
+
+            currentPayments = calculator.calculateSchedule(creditTerms);
+            statusLabel.setText("Status: Payment schedule calculated (" + currentPayments.size() + " payments)");
             statusLabel.setForeground(SUCCESSFUL_TEXT_COLOR);
 
             updateTable();

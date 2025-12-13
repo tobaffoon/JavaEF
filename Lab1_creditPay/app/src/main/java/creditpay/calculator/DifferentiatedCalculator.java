@@ -11,6 +11,9 @@ import creditpay.model.CreditTerms;
 import creditpay.model.Payment;
 
 public class DifferentiatedCalculator extends MortgageScheduleCalculator {
+    private static final String _displayName = "Differentiated";
+
+    @Override
     public List<Payment> calculateSchedule(CreditTerms terms) {
         List<Payment> schedule = new ArrayList<>();
         CalculationParams params = initializeCalculation(terms);
@@ -34,5 +37,10 @@ public class DifferentiatedCalculator extends MortgageScheduleCalculator {
             previousAccrualDate = currentAccrualDate;
         }
         return schedule;
+    }
+
+    @Override
+    public String getDisplayName() {
+        return _displayName;
     }
 }

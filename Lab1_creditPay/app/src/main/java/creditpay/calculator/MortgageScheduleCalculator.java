@@ -20,6 +20,8 @@ public abstract class MortgageScheduleCalculator {
         return new CalculationParams(principal, months, monthlyRate, terms.getStartDate(), terms.getInterestPeriod());
     }
     
+    public abstract String getDisplayName();
+
     public abstract List<Payment> calculateSchedule(CreditTerms terms);
     
     protected static class CalculationParams {
