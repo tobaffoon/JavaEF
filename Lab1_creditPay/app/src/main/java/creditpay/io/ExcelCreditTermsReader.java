@@ -81,7 +81,7 @@ public final class ExcelCreditTermsReader {
         }
 
         try {
-            String rawValue = formatter.formatCellValue(valueRow.getCell(colPrincipal));
+            String rawValue = formatter.formatCellValue(valueRow.getCell(colPrincipal)).replace(",", "");
             principal = new BigDecimal(rawValue);
         } catch (NumberFormatException ex){
             throw new InvalidFormatException("Некорректное значение суммы кредита");
