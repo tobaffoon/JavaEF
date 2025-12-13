@@ -65,13 +65,10 @@ public final class MortgageScheduleCalculator {
             
             BigDecimal interest = remaining.multiply(params.monthlyRate);
             
-            // For the last payment, adjust to exactly clear the remaining balance
             BigDecimal currentPayment;
             BigDecimal principalPart;
             BigDecimal newRemaining;
-            
             if (m == params.months - 1) {
-                // Last payment: total = remaining balance + interest
                 newRemaining = BigDecimal.ZERO;
                 currentPayment = remaining.add(interest);
                 principalPart = remaining;
