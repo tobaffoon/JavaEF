@@ -49,15 +49,15 @@ public class SwingApp {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout(10, 10));
 
-        // Top panel - File selection
+        // File selection
         JPanel topPanel = createTopPanel();
         frame.add(topPanel, BorderLayout.NORTH);
 
-        // Center panel - Main content (payment method + table + chart)
+        // payment method + table + chart
         JPanel centerPanel = createCenterPanel();
         frame.add(centerPanel, BorderLayout.CENTER);
 
-        // Bottom panel - Status and buttons
+        // Status and buttons
         JPanel bottomPanel = createBottomPanel();
         frame.add(bottomPanel, BorderLayout.SOUTH);
 
@@ -85,18 +85,16 @@ public class SwingApp {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        // Left panel - Payment method selection
+        // method selection
         JPanel methodPanel = createMethodPanel();
         panel.add(methodPanel, BorderLayout.WEST);
 
-        // Right panel - Table and Chart
+        // Table and Chart
         JPanel rightPanel = new JPanel(new BorderLayout(10, 10));
 
-        // Table
         JPanel tablePanel = createTablePanel();
         rightPanel.add(tablePanel, BorderLayout.CENTER);
 
-        // Chart
         chartPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -146,7 +144,6 @@ public class SwingApp {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createTitledBorder("Step 3: Payment Schedule Table"));
 
-        // Create table with actual headers but they will be hidden initially
         tableModel = new DefaultTableModel(
             new String[]{
                 ExcelPaymentWriter.HEADER_NUMBER,
@@ -170,7 +167,6 @@ public class SwingApp {
         paymentTable.getTableHeader().setReorderingAllowed(false);
         paymentTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         
-        // Configure header with word wrap
         JTableHeader header = paymentTable.getTableHeader();
         header.setDefaultRenderer(new WrappingHeaderRenderer());
         header.setPreferredSize(new Dimension(header.getWidth(), 60));
@@ -285,7 +281,6 @@ public class SwingApp {
     private void updateTable() {
         tableModel.setRowCount(0);
         
-        // Show columns when table is populated
         showTable();
 
         int rowNum = 1;
@@ -349,7 +344,6 @@ public class SwingApp {
         int chartWidth = width - 2 * padding;
         int chartHeight = height - 2 * padding;
 
-        // Find max payment amount for scaling
         BigDecimal maxPayment = currentPayments.stream()
                 .map(p -> p.totalPayment)
                 .max(BigDecimal::compareTo)
@@ -363,7 +357,6 @@ public class SwingApp {
         int numPayments = currentPayments.size();
         double barWidth = (double) chartWidth / numPayments;
 
-        // Draw bars
         for (int i = 0; i < numPayments; i++) {
             Payment payment = currentPayments.get(i);
             double totalHeight = (payment.totalPayment.doubleValue() / maxValue) * chartHeight;
@@ -372,17 +365,14 @@ public class SwingApp {
             int x = padding + (int) (i * barWidth);
             int barHeightTotal = (int) totalHeight;
 
-            // Interest (red)
             int interestHeight = (int) ((payment.interest.doubleValue() / maxValue) * chartHeight);
             g2d.setColor(new Color(255, 0, 0, 150));
             g2d.fillRect(x, height - padding - barHeightTotal, (int) barWidth - 2, interestHeight);
 
-            // Principal (blue)
             g2d.setColor(new Color(0, 0, 255, 150));
             g2d.fillRect(x, height - padding - barHeightTotal + interestHeight, (int) barWidth - 2, (int) principalHeight);
         }
 
-        // Legend
         g2d.setColor(Color.BLACK);
         g2d.setFont(new Font("Arial", Font.PLAIN, 12));
         g2d.drawString("Principal", width - 150, 20);
