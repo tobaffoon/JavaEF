@@ -25,8 +25,6 @@ public final class InterestPeriod {
             throw new IllegalArgumentException("previousAccrualDate must not be null");
         }
         LocalDate candidate = previousAccrualDate.plusMonths(1);
-        YearMonth ym = YearMonth.from(candidate);
-        int day = Math.min(paymentDay, ym.lengthOfMonth());
-        return ym.atDay(day);
+        return candidate;
     }
 }
