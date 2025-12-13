@@ -1,7 +1,6 @@
 package creditpay.model;
 
 import java.time.LocalDate;
-import java.time.YearMonth;
 
 /**
  * Период как диапазон по числам месяца (например, с 26 по 25).

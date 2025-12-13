@@ -1,8 +1,6 @@
 package creditpay;
 
 import creditpay.calculator.MortgageScheduleCalculator;
-import creditpay.calculator.DifferentiatedCalculator;
-import creditpay.calculator.AnnuityCalculator;
 import creditpay.calculator.CalculatorRegistry;
 import creditpay.io.ExcelCreditTermsReader;
 import creditpay.io.ExcelPaymentWriter;
