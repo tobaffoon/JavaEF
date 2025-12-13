@@ -137,22 +137,37 @@ public class SwingApp {
     private JPanel createMethodPanel() {
         initializeMethods();
 
-        JPanel panel = new JPanel(new GridLayout(4, 1, 10, 10));
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBorder(BorderFactory.createTitledBorder("Step 2: Select Payment Method"));
 
         for (JRadioButton button : methodsMap.keySet()) {
+            button.setAlignmentX(Component.LEFT_ALIGNMENT);
+            button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
             panel.add(button);
         }
+
+        panel.add(Box.createVerticalStrut(10));
 
         calculateButton = new JButton("Calculate Schedule");
         calculateButton.setEnabled(false);
         calculateButton.addActionListener(this::calculateSchedule);
+        calculateButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+        calculateButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         panel.add(calculateButton);
+
+        panel.add(Box.createVerticalStrut(5));
 
         saveButton = new JButton("Save to Excel");
         saveButton.setEnabled(false);
         saveButton.addActionListener(this::saveToExcel);
+        saveButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+        saveButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         panel.add(saveButton);
+
+        panel.add(Box.createVerticalGlue());
+
+        panel.setPreferredSize(new Dimension(200, 0));
 
         return panel;
     }
