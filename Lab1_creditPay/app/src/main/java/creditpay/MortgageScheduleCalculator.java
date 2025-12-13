@@ -64,10 +64,24 @@ public final class MortgageScheduleCalculator {
             daysOfBorrowing += (int) ChronoUnit.DAYS.between(previousAccrualDate, currentAccrualDate);
             
             BigDecimal interest = remaining.multiply(params.monthlyRate);
-            BigDecimal principalPart = monthlyPayment.subtract(interest);
-            BigDecimal newRemaining = remaining.subtract(principalPart);
             
-            schedule.add(new Payment(daysOfBorrowing, currentAccrualDate, monthlyPayment, interest, principalPart, newRemaining));
+            // For the last payment, adjust to exactly clear the remaining balance
+            BigDecimal currentPayment;
+            BigDecimal principalPart;
+            BigDecimal newRemaining;
+            
+            if (m == params.months - 1) {
+                // Last payment: total = remaining balance + interest
+                newRemaining = BigDecimal.ZERO;
+                currentPayment = remaining.add(interest);
+                principalPart = remaining;
+            } else {
+                currentPayment = monthlyPayment;
+                principalPart = monthlyPayment.subtract(interest);
+                newRemaining = remaining.subtract(principalPart);
+            }
+            
+            schedule.add(new Payment(daysOfBorrowing, currentAccrualDate, currentPayment, interest, principalPart, newRemaining));
             
             remaining = newRemaining;
             previousAccrualDate = currentAccrualDate;
