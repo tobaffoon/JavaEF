@@ -1,5 +1,8 @@
 package creditpay;
 
+import creditpay.calculator.MortgageScheduleCalculator;
+import creditpay.calculator.DifferentiatedCalculator;
+import creditpay.calculator.AnnuityCalculator;
 import creditpay.io.ExcelCreditTermsReader;
 import creditpay.io.ExcelPaymentWriter;
 import creditpay.model.CreditTerms;
@@ -259,13 +262,14 @@ public class SwingApp {
             statusLabel.setForeground(Color.BLUE);
             frame.repaint();
 
+            MortgageScheduleCalculator calculator;
             if (differentiatedRadio.isSelected()) {
-                currentPayments = MortgageScheduleCalculator.differentiated(creditTerms);
-                statusLabel.setText("Status: Differentiated payment schedule calculated (" + currentPayments.size() + " payments)");
+                calculator = new DifferentiatedCalculator();
             } else {
-                currentPayments = MortgageScheduleCalculator.annuity(creditTerms);
-                statusLabel.setText("Status: Annuity payment schedule calculated (" + currentPayments.size() + " payments)");
+                calculator = new AnnuityCalculator();
             }
+                currentPayments = calculator.calculateSchedule(creditTerms);
+                statusLabel.setText("Status: Payment schedule calculated (" + currentPayments.size() + " payments)");
             statusLabel.setForeground(SUCCESSFUL_TEXT_COLOR);
 
             updateTable();

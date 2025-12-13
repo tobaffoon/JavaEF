@@ -4,28 +4,22 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public class Payment {
-    /*
-     * Количество дней пользования заемными средствами.
+    /** Количество дней пользования заемными средствами.
      */
     public final int daysOfBorrowing;
-    /*
-     * Дата платежа.
+    /** Дата платежа.
      */
     public final LocalDate paymentDate;
-    /*
-     * Общая сумма платежа.
+    /** Общая сумма платежа.
      */ 
     public final BigDecimal totalPayment;
-    /*
-     * Сумма процентов.
+    /** Сумма процентов.
      */
     public final BigDecimal interest;
-    /*
-     * Сумма погашаемого долга.
+    /** Сумма погашаемого долга.
      */
     public final BigDecimal principalRepaid;
-    /*
-     * Остаток задолженности.
+    /** Остаток задолженности.
      */
     public final BigDecimal remainingDebt;
     
