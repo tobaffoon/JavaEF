@@ -23,12 +23,41 @@ dependencies {
 
     // This dependency is used by the application.
     implementation(libs.guava)
+
+    // JFreeChart for charting
+    implementation("org.jfree:jfreechart:1.5.3")
+    implementation("org.jfree:org.jfree.chart.fx:2.0.1")
+    implementation("org.jfree:jfreesvg:3.4.1")
+
+    // gRPC and Protocol Buffers for Finam API
+    implementation("io.grpc:grpc-protobuf:1.53.0")
+    implementation("io.grpc:grpc-stub:1.53.0")
+    implementation("io.grpc:grpc-netty-shaded:1.53.0")
+    implementation("com.google.protobuf:protobuf-java:3.22.2")
+
+    // HTTP Client for REST API calls
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    implementation("com.google.code.gson:gson:2.10.1")
+
+    // Apache Commons
+    implementation("commons-io:commons-io:2.11.0")
+
+    // Apache POI for Excel
+    implementation("org.apache.poi:poi-ooxml:5.2.3")
+
+    // Logging
+    implementation("org.slf4j:slf4j-api:2.0.3")
+
+    // WebSocket
+    implementation("org.java-websocket:Java-WebSocket:1.5.1")
+
+    // Note: Selenium and WebDriverManager removed - replaced with lightweight gRPC/HTTP API client
 }
 
 // Apply a specific Java toolchain to ease working on different environments.
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(18)
     }
 }
 
