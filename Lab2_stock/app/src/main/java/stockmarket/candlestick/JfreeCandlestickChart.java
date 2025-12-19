@@ -227,7 +227,7 @@ public class JfreeCandlestickChart extends JPanel {
                 for (i = 0; i < sizeTimeList; ++i) {
                     if (i + Time >= sizeTimeList)
                         break;
-                    EMASeries.add(timeList.get(i), EMAIndicator.EMAForexIndicator(closeList, Price, i, i + Time));
+                    EMASeries.add(timeList.get(i), EMAIndicator.calculateEma(closeList, Price, i, i + Time));
                 }
             }
             if (IsMacd) {
@@ -235,7 +235,7 @@ public class JfreeCandlestickChart extends JPanel {
                 for (i = 0; i < sizeTimeList; ++i) {
                     if (i + femaw >= sizeTimeList || i + semaw >= sizeTimeList)
                         break;
-                    var a = MACDIndicator.MACDTradingViewIndicator(closeList, i, i + femaw, i + semaw);
+                    var a = MACDIndicator.calculateMacd(closeList, i, i + femaw, i + semaw);
                     MACDSeries.add(timeList.get(i), a);
                     tempList.add(a);
                 }
@@ -243,11 +243,12 @@ public class JfreeCandlestickChart extends JPanel {
             if (IsSma) {
                 SMASeries = new TimeSeries("SMA:" + "SMATS = " + smaw);
                 for (i = 0; i < tempList.size(); ++i) {
-                    var b = SMAIndicator.SMATradingViewIndicator(tempList, i, smaw);
+                    var b = SMAIndicator.calculateSma(tempList, i, smaw);
                     SMASeries.add(timeList.get(i), b);
                     MACDmaxVal = Double.max(Double.max(tempList.get(i), b), MACDmaxVal);
                     MACDminVal = Double.min(Double.min(tempList.get(i), b), MACDminVal);
                 }
+
             }
         } catch (Exception e) {
             e.printStackTrace();

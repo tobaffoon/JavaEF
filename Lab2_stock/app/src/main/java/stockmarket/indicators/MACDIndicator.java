@@ -2,20 +2,38 @@ package stockmarket.indicators;
 
 import java.util.ArrayList;
 
-public class MACDIndicator extends IndicatorBase{
-    //https://pro-ts.ru/indikatory-foreks/63-indikator-macd
-    //usually periods MACD 12 and 26
-    // EMAs - EMA small
-    // EMAi - EMA big
-    public static double MACDTradingViewIndicator(ArrayList<Double> data, int begin, int fastEMAWidth, int slowEMAWidth){
-        var macdFMA = EMAIndicator.EMAForexIndicator(data, 2.0 / (1 + fastEMAWidth-begin), begin, fastEMAWidth);
-        var macdSMA = EMAIndicator.EMAForexIndicator(data, 2.0 / (1 + slowEMAWidth-begin), begin, slowEMAWidth);
-        return  macdFMA - macdSMA;
-    }
+/**
+ * MACD (Moving Average Convergence Divergence) indicator implementation.
+ * Reference: https://pro-ts.ru/indikatory-foreks/63-indikator-macd
+ * Typically uses periods 12 and 26.
+ */
+public class MACDIndicator extends IndicatorBase {
+  /**
+   * Calculates the MACD indicator with specified fast and slow EMA widths.
+   *
+   * @param data the list of price data
+   * @param begin the starting index
+   * @param fastEmaWidth the fast EMA period (usually 12)
+   * @param slowEmaWidth the slow EMA period (usually 26)
+   * @return the calculated MACD value
+   */
+  public static double calculateMacd(ArrayList<Double> data, int begin,
+      int fastEmaWidth, int slowEmaWidth) {
+    var macdFastEma = EMAIndicator.calculateEma(data,
+        2.0 / (1 + fastEmaWidth - begin), begin, fastEmaWidth);
+    var macdSlowEma = EMAIndicator.calculateEma(data,
+        2.0 / (1 + slowEmaWidth - begin), begin, slowEmaWidth);
+    return macdFastEma - macdSlowEma;
+  }
 
-    //12, 26
-    public  static double MACDTradingViewIndicator(ArrayList<Double> data, int begin)
-    {
-        return MACDTradingViewIndicator(data, begin, 12, 26);
-    }
+  /**
+   * Calculates the MACD indicator with default periods (12, 26).
+   *
+   * @param data the list of price data
+   * @param begin the starting index
+   * @return the calculated MACD value
+   */
+  public static double calculateMacd(ArrayList<Double> data, int begin) {
+    return calculateMacd(data, begin, 12, 26);
+  }
 }

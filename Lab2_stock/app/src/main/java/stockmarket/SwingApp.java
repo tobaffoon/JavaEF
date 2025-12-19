@@ -3,8 +3,6 @@ package stockmarket;
 import stockmarket.candlestick.JfreeCandlestickChart;
 import stockmarket.datasource.DataSourceBase;
 import stockmarket.datasource.FinamApiClient;
-import stockmarket.datasource.ApiExecutor;
-import stockmarket.datasource.DownloadedDataBuffef;
 import stockmarket.utils.TimeUtils;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.block.ColumnArrangement;
@@ -261,12 +259,6 @@ public class SwingApp {
                         }
                         finamClient.setJWTToken(secretResult[0]);
                     }
-                } else if (selectedSource.equals("PolygonAPI")) {
-                    currentDataSource = new ApiExecutor();
-                    throw new Exception("This data source is not implemented");
-                } else if (selectedSource.equals("Buffer")) {
-                    currentDataSource = new DownloadedDataBuffef();
-                    throw new Exception("This data source is not implemented");
                 }
 
                 progressBar.setValue(30);
