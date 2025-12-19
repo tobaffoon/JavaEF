@@ -245,6 +245,22 @@ public class SwingApp {
             try {
                 if (selectedSource.equals("Finam API")) {
                     currentDataSource = new FinamApiClient();
+                    
+                    // Handle secret token for Finam API authentication
+                    FinamApiClient finamClient = (FinamApiClient) currentDataSource;
+                    String storedSecret = finamClient.getToken();
+                    if (storedSecret == null || storedSecret.isEmpty()) {
+                        // Prompt for secret on UI thread
+                        String[] secretResult = new String[1];
+                        SwingUtilities.invokeAndWait(() -> {
+                            secretResult[0] = promptForFinamSecret();
+                        });
+                        
+                        if (secretResult[0] == null || secretResult[0].isEmpty()) {
+                            throw new InterruptedException("Finam API secret is required for connection");
+                        }
+                        finamClient.setJWTToken(secretResult[0]);
+                    }
                 } else if (selectedSource.equals("PolygonAPI")) {
                     currentDataSource = new ApiExecutor();
                     throw new Exception("This data source is not implemented");
@@ -508,6 +524,35 @@ public class SwingApp {
         progressBar.setValue(0);
         connectionLabel.setText("Not Connected");
         connectionLabel.setForeground(ERROR_TEXT_COLOR);
+    }
+
+    private String promptForFinamSecret() {
+        // Create a custom dialog for secret input
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        
+        JLabel label = new JLabel("Enter your Finam API Secret:");
+        JPasswordField passwordField = new JPasswordField(40);
+        JCheckBox rememberCheckBox = new JCheckBox("Remember secret (stored locally)");
+        
+        panel.add(label);
+        panel.add(Box.createVerticalStrut(5));
+        panel.add(passwordField);
+        panel.add(Box.createVerticalStrut(5));
+        panel.add(rememberCheckBox);
+        
+        int result = JOptionPane.showConfirmDialog(
+            frame,
+            panel,
+            "Finam API Authentication",
+            JOptionPane.OK_CANCEL_OPTION,
+            JOptionPane.INFORMATION_MESSAGE
+        );
+        
+        if (result == JOptionPane.OK_OPTION) {
+            return new String(passwordField.getPassword());
+        }
+        return null;
     }
 
     private void updateStatus(String message, Color color) {
