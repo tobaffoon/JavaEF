@@ -4,9 +4,10 @@ package stockmarket.model;
  * Represents a financial asset (stock, bond, etc.) quote from the Finam API
  */
 public class Quote {
-    private String ticker;
-    private String isin;
-    private String name;
+    public String ticker;
+    public String isin;
+    public String name;
+    public String mic;
 
     public Quote() {
     }
@@ -17,28 +18,11 @@ public class Quote {
         this.name = name;
     }
 
-    public String getTicker() {
-        return ticker;
-    }
-
-    public void setTicker(String ticker) {
+    public Quote(String ticker, String isin, String name, String mic) {
         this.ticker = ticker;
-    }
-
-    public String getIsin() {
-        return isin;
-    }
-
-    public void setIsin(String isin) {
         this.isin = isin;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
         this.name = name;
+        this.mic = mic;
     }
 
     @Override

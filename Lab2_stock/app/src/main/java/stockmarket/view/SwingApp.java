@@ -3,6 +3,7 @@ package stockmarket.view;
 import stockmarket.candlestick.JfreeCandlestickChart;
 import stockmarket.control.StockMarketController;
 import stockmarket.datasource.DataSourceBase;
+import stockmarket.model.Quote;
 import stockmarket.utils.TimeUtils;
 
 import org.apache.poi.ss.formula.eval.NotImplementedException;
@@ -24,9 +25,9 @@ public class SwingApp {
     private static final Color ERROR_TEXT_COLOR = new Color(200, 0, 0);
 
     private JFrame frame;
-    private JComboBox<String> dataSourceCombo;
-    private JComboBox<String> marketCombo;
-    private JComboBox<String> quoteCombo;
+    private JComboBox<DataSourceBase> dataSourceCombo;
+    private JLabel marketLabel;
+    private JComboBox<Quote> quoteCombo;
     private JComboBox<String> intervalCombo;
     private JTextField beginDateTF;
     private JTextField endDateTF;
@@ -110,15 +111,12 @@ public class SwingApp {
         // Second row: Market, Quote, Interval
         JPanel row2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         row2.add(new JLabel("Market:"));
-        marketCombo = new JComboBox<>();
-        marketCombo.setEnabled(false);
-        marketCombo.addActionListener(e -> controller.onMarketChanged());
-        row2.add(marketCombo);
+        marketLabel = new JLabel("None");
+        row2.add(marketLabel);
 
         row2.add(new JLabel("Quote:"));
         quoteCombo = new JComboBox<>();
         quoteCombo.setEnabled(false);
-        quoteCombo.addActionListener(e -> controller.onQuoteChanged());
         row2.add(quoteCombo);
 
         row2.add(new JLabel("Contract:"));
@@ -133,7 +131,6 @@ public class SwingApp {
         row3.add(new JLabel("Interval:"));
         intervalCombo = new JComboBox<>();
         intervalCombo.setEnabled(false);
-        intervalCombo.addActionListener(e -> controller.onIntervalChanged());
         row3.add(intervalCombo);
 
         row3.add(new JLabel("Begin Date:"));
@@ -214,9 +211,8 @@ public class SwingApp {
     }
 
     private void initDataSourceList() {
-        ArrayList<String> dataSourceList = controller.getDataSourceList();
-        dataSourceList.add("Finam API");
-        for (String source : dataSourceList) {
+        ArrayList<DataSourceBase> dataSourceList = controller.getDataSourceList();
+        for (DataSourceBase source : dataSourceList) {
             dataSourceCombo.addItem(source);
         }
     }
@@ -353,8 +349,7 @@ public class SwingApp {
 
     public void resetConnectionState() {
         currentDataSource = null;
-        marketCombo.removeAllItems();
-        marketCombo.setEnabled(false);
+        marketLabel.setText("None");
         quoteCombo.removeAllItems();
         quoteCombo.setEnabled(false);
         intervalCombo.removeAllItems();
@@ -376,15 +371,15 @@ public class SwingApp {
         return frame;
     }
 
-    public JComboBox<String> getDataSourceCombo() {
+    public JComboBox<DataSourceBase> getDataSourceCombo() {
         return dataSourceCombo;
     }
 
-    public JComboBox<String> getMarketCombo() {
-        return marketCombo;
+    public JLabel getMarketLabel() {
+        return marketLabel;
     }
 
-    public JComboBox<String> getQuoteCombo() {
+    public JComboBox<Quote> getQuoteCombo() {
         return quoteCombo;
     }
 

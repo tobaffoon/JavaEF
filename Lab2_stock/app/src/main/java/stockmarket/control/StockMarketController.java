@@ -3,6 +3,7 @@ package stockmarket.control;
 import stockmarket.candlestick.JfreeCandlestickChart;
 import stockmarket.datasource.DataSourceBase;
 import stockmarket.datasource.FinamApiClient;
+import stockmarket.model.Quote;
 import stockmarket.utils.TimeUtils;
 import stockmarket.view.SwingApp;
 
@@ -24,25 +25,22 @@ public class StockMarketController {
     private static final Color ERROR_TEXT_COLOR = new Color(200, 0, 0);
 
     private SwingApp view;
-    private DataSourceBase currentDataSource;
-    private ArrayList<String> dataSourceList;
-    private ArrayList<String> marketList;
-    private ArrayList<String> quoteList;
+    private ArrayList<DataSourceBase> dataSourceList;
+    private ArrayList<Quote> quoteList;
     private ArrayList<String> intervalList;
-    private boolean isDataModified = false;
 
     public StockMarketController(SwingApp view) {
         this.view = view;
         initDataSourceList();
     }
+    
+    public ArrayList<DataSourceBase> getDataSourceList(){
+        return dataSourceList;
+    }
 
     private void initDataSourceList() {
         dataSourceList = new ArrayList<>();
-        dataSourceList.add("Finam API");
-    }
-
-    public ArrayList<String> getDataSourceList() {
-        return dataSourceList;
+        dataSourceList.add(new FinamApiClient());
     }
 
     public void onDataSourceChanged() {
@@ -50,8 +48,13 @@ public class StockMarketController {
         view.resetConnectionState();
     }
 
+    private DataSourceBase getSelectedDataSource() {
+        DataSourceBase selectedSource = (DataSourceBase)view.getDataSourceCombo().getSelectedItem();
+        return selectedSource;
+    }
+
     public void onConnectButtonClick(ActionEvent e) {
-        String selectedSource = (String) view.getDataSourceCombo().getSelectedItem();
+        DataSourceBase selectedSource = (DataSourceBase)getSelectedDataSource();
         if (selectedSource == null) {
             updateStatus("ERROR: Please select a data source", ERROR_TEXT_COLOR);
             return;
@@ -64,11 +67,7 @@ public class StockMarketController {
 
         Thread connectionThread = new Thread(() -> {
             try {
-                if (selectedSource.equals("Finam API")) {
-                    currentDataSource = new FinamApiClient();
-
-                    // Handle secret token for Finam API authentication
-                    FinamApiClient finamClient = (FinamApiClient) currentDataSource;
+                if(selectedSource instanceof FinamApiClient finamClient){          
                     String storedSecret = finamClient.getToken();
                     if (storedSecret == null || storedSecret.isEmpty()) {
                         // Prompt for secret on UI thread
@@ -80,21 +79,18 @@ public class StockMarketController {
                         if (secretResult[0] == null || secretResult[0].isEmpty()) {
                             throw new InterruptedException("Finam API secret is required for connection");
                         }
-                        finamClient.setJWTToken(secretResult[0]);
+                        finamClient.setSecretToken(secretResult[0]);
                     }
                 }
-
+                
                 view.getProgressBar().setValue(30);
-                currentDataSource.connect();
-                view.getProgressBar().setValue(40);
-                currentDataSource.initElements();
+                selectedSource.connect();
                 view.getProgressBar().setValue(50);
 
-                marketList = currentDataSource.getMarketList();
                 view.getProgressBar().setValue(60);
-                quoteList = currentDataSource.getQuotesList();
+                quoteList = selectedSource.getQuotesList();
                 view.getProgressBar().setValue(70);
-                intervalList = currentDataSource.getIntervalList();
+                intervalList = selectedSource.getIntervalList();
                 view.getProgressBar().setValue(80);
 
                 SwingUtilities.invokeLater(this::updateUIAfterConnection);
@@ -117,14 +113,8 @@ public class StockMarketController {
     }
 
     private void updateUIAfterConnection() {
-        view.getMarketCombo().removeAllItems();
-        for (String market : marketList) {
-            view.getMarketCombo().addItem(market);
-        }
-        view.getMarketCombo().setEnabled(true);
-
         view.getQuoteCombo().removeAllItems();
-        for (String quote : quoteList) {
+        for (Quote quote : quoteList) {
             view.getQuoteCombo().addItem(quote);
         }
         view.getQuoteCombo().setEnabled(true);
@@ -138,72 +128,18 @@ public class StockMarketController {
         view.getGetDataButton().setEnabled(true);
         view.getConnectButton().setEnabled(true);
 
-        if (currentDataSource != null) {
-            if (view.getMarketCombo().getItemCount() > 0) {
-                view.getMarketCombo().setSelectedIndex(0);
-                // Explicitly set the market in the data source
-                try {
-                    currentDataSource.setMarket((String) view.getMarketCombo().getSelectedItem(), 0, 0);
-                } catch (Exception e) {
-                    System.err.println("Failed to set initial market: " + e.getMessage());
-                }
-            }
-            if (view.getQuoteCombo().getItemCount() > 0) {
-                view.getQuoteCombo().setSelectedIndex(0);
-                // Explicitly set the quote in the data source
-                try {
-                    currentDataSource.setQuote((String) view.getQuoteCombo().getSelectedItem(), 0, 0);
-                } catch (Exception e) {
-                    System.err.println("Failed to set initial quote: " + e.getMessage());
-                }
-            }
-            if (view.getIntervalCombo().getItemCount() > 0) {
-                view.getIntervalCombo().setSelectedIndex(0);
-                // Explicitly set the interval in the data source
-                try {
-                    currentDataSource.setInterval((String) view.getIntervalCombo().getSelectedItem(), 0);
-                } catch (Exception e) {
-                    System.err.println("Failed to set initial interval: " + e.getMessage());
-                }
-            }
+        if (view.getQuoteCombo().getItemCount() > 0) {
+            view.getQuoteCombo().setSelectedIndex(0);
         }
-    }
 
-    public void onMarketChanged() {
-        if (currentDataSource != null && view.getMarketCombo().getSelectedItem() != null) {
-            try {
-                currentDataSource.setMarket((String) view.getMarketCombo().getSelectedItem(), 0, view.getMarketCombo().getSelectedIndex());
-                isDataModified = true;
-            } catch (Exception e) {
-                updateStatus("ERROR: Failed to set market - " + e.getMessage(), ERROR_TEXT_COLOR);
-            }
-        }
-    }
-
-    public void onQuoteChanged() {
-        if (currentDataSource != null && view.getQuoteCombo().getSelectedItem() != null) {
-            try {
-                currentDataSource.setQuote((String) view.getQuoteCombo().getSelectedItem(), 0, view.getQuoteCombo().getSelectedIndex());
-                isDataModified = true;
-            } catch (Exception e) {
-                updateStatus("ERROR: Failed to set quote - " + e.getMessage(), ERROR_TEXT_COLOR);
-            }
-        }
-    }
-
-    public void onIntervalChanged() {
-        if (currentDataSource != null && view.getIntervalCombo().getSelectedItem() != null) {
-            try {
-                currentDataSource.setInterval((String) view.getIntervalCombo().getSelectedItem(), 0);
-                isDataModified = true;
-            } catch (Exception e) {
-                updateStatus("ERROR: Failed to set interval - " + e.getMessage(), ERROR_TEXT_COLOR);
-            }
+        if (view.getIntervalCombo().getItemCount() > 0) {
+            view.getIntervalCombo().setSelectedIndex(0);
         }
     }
 
     public void onGetDataButton(ActionEvent e) {
         try {
+            DataSourceBase currentDataSource = (DataSourceBase)getSelectedDataSource();
             if (currentDataSource == null) {
                 updateStatus("ERROR: Not connected to data source", ERROR_TEXT_COLOR);
                 return;
@@ -229,19 +165,6 @@ public class StockMarketController {
                 try {
                     String[] beginDate = beginDateStr.split("\\.");
                     String[] endDate = endDateStr.split("\\.");
-
-                    currentDataSource.setBeginData(
-                            Integer.parseInt(beginDate[0]),
-                            Integer.parseInt(beginDate[1]) - 1,
-                            Integer.parseInt(beginDate[2])
-                    );
-                    currentDataSource.setEndData(
-                            Integer.parseInt(endDate[0]),
-                            Integer.parseInt(endDate[1]) - 1,
-                            Integer.parseInt(endDate[2])
-                    );
-
-                    currentDataSource.getData();
 
                     JfreeCandlestickChart candlestickChart = new JfreeCandlestickChart("Stock Chart");
                     String intervalValue = (String) view.getIntervalCombo().getSelectedItem();
@@ -273,8 +196,9 @@ public class StockMarketController {
                     }
 
                     SwingUtilities.invokeLater(() -> {
-                        String chartTitle = (String) view.getMarketCombo().getSelectedItem() + " " +
-                                (String) view.getQuoteCombo().getSelectedItem() + " " +
+                        Quote selectedQuote = (Quote) view.getQuoteCombo().getSelectedItem();
+                        String chartTitle = selectedQuote.mic + " " +
+                                selectedQuote + " " +
                                 beginDateStr + " - " + endDateStr;
 
                         JFreeChart chart = candlestickChart.createChart(chartTitle);
@@ -327,9 +251,6 @@ public class StockMarketController {
     }
 
     private void resetConnectionState() {
-        currentDataSource = null;
-        view.getMarketCombo().removeAllItems();
-        view.getMarketCombo().setEnabled(false);
         view.getQuoteCombo().removeAllItems();
         view.getQuoteCombo().setEnabled(false);
         view.getIntervalCombo().removeAllItems();
