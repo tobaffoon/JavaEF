@@ -10,12 +10,6 @@ import java.util.ArrayList;
 public class MACDIndicator extends IndicatorBase {
   /**
    * Calculates the MACD indicator with specified fast and slow EMA widths.
-   *
-   * @param data the list of price data
-   * @param begin the starting index
-   * @param fastEmaWidth the fast EMA period (usually 12)
-   * @param slowEmaWidth the slow EMA period (usually 26)
-   * @return the calculated MACD value
    */
   public static double calculateMacd(ArrayList<Double> data, int begin,
       int fastEmaWidth, int slowEmaWidth) {
@@ -28,10 +22,6 @@ public class MACDIndicator extends IndicatorBase {
 
   /**
    * Calculates the MACD indicator with default periods (12, 26).
-   *
-   * @param data the list of price data
-   * @param begin the starting index
-   * @return the calculated MACD value
    */
   public static double calculateMacd(ArrayList<Double> data, int begin) {
     return calculateMacd(data, begin, 12, 26);

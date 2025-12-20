@@ -8,11 +8,6 @@ import java.util.ArrayList;
 public class SMAIndicator extends IndicatorBase {
   /**
    * Calculates the Simple Moving Average.
-   *
-   * @param data the list of price data
-   * @param begin the starting index
-   * @param step the number of periods
-   * @return the calculated SMA value
    */
   public static double calculateSma(ArrayList<Double> data, int begin, int step) {
     Double result = 0.0;

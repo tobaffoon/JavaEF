@@ -9,12 +9,6 @@ import java.util.ArrayList;
 public class EMAIndicator extends IndicatorBase {
   /**
    * Calculates the Exponential Moving Average for forex data.
-   *
-   * @param close the list of closing prices
-   * @param pricePercent the weight percentage for current price
-   * @param beginTime the beginning index
-   * @param time the current time index
-   * @return the calculated EMA value
    */
   public static double calculateEma(ArrayList<Double> close, double pricePercent,
       int beginTime, int time) {

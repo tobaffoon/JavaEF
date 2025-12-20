@@ -12,7 +12,6 @@ public class TradeData {
     private double open;
 
     public TradeData(String stock, long time, double open, double price, long volume, String date, double high, double low) {
-        super();
         this.stock = stock;
         this.time = time;
         this.open = open;
@@ -28,7 +27,6 @@ public class TradeData {
     }
 
     public TradeData(String stock, long time, double price, long volume) {
-        super();
         this.stock = stock;
         this.time = time;
         this.price = price;

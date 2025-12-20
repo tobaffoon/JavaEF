@@ -19,7 +19,6 @@ import java.util.Map;
 public class FinamApiClient extends DataSourceBase {
 
     private static final String API_BASE_URL = "https://api.finam.ru/v1/";
-    private static final String MARKET_DATA_ENDPOINT = "/instruments/{symbol}/bars";
     
     private OkHttpClient httpClient;
     private String authToken;
@@ -43,11 +42,6 @@ public class FinamApiClient extends DataSourceBase {
         this.httpClient = new OkHttpClient();
         initIntervalMap();
         initDataLists();
-        
-        initMarket = "МосБиржа акции";
-        initQuote = "ГАЗПРОМ ао";
-        initContract = "GAZP";
-        initInterval = "1 мин";
     }
 
     private void initIntervalMap() {

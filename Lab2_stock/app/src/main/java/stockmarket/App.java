@@ -3,6 +3,8 @@
  */
 package stockmarket;
 
+import stockmarket.view.SwingApp;
+
 public class App {
     public static void main(String[] args) {
         SwingApp.main(args);
