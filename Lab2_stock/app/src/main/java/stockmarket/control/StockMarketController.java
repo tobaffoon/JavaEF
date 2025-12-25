@@ -1,8 +1,8 @@
 package stockmarket.control;
 
 import stockmarket.candlestick.JfreeCandlestickChart;
-import stockmarket.datasource.DataSourceBase;
-import stockmarket.datasource.FinamApiClient;
+import stockmarket.io.DataSourceBase;
+import stockmarket.io.FinamApiClient;
 import stockmarket.model.Quote;
 import stockmarket.utils.TimeUtils;
 import stockmarket.view.SwingApp;

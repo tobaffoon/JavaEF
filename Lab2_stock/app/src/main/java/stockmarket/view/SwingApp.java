@@ -2,7 +2,7 @@ package stockmarket.view;
 
 import stockmarket.candlestick.JfreeCandlestickChart;
 import stockmarket.control.StockMarketController;
-import stockmarket.datasource.DataSourceBase;
+import stockmarket.io.DataSourceBase;
 import stockmarket.model.Quote;
 import stockmarket.utils.TimeUtils;
 
@@ -108,47 +108,53 @@ public class SwingApp {
         panel.add(row1);
         panel.add(Box.createVerticalStrut(5));
 
-        // Second row: Market, Quote, Interval
+        // Second row: Market
         JPanel row2 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         row2.add(new JLabel("Market:"));
         marketLabel = new JLabel("None");
         row2.add(marketLabel);
 
-        row2.add(new JLabel("Quote:"));
-        quoteCombo = new JComboBox<>();
-        quoteCombo.setEnabled(false);
-        row2.add(quoteCombo);
-
-        row2.add(new JLabel("Contract:"));
-        contractLabel = new JLabel("None");
-        row2.add(contractLabel);
-
         panel.add(row2);
         panel.add(Box.createVerticalStrut(5));
 
-        // Third row: Interval and dates
+        // Third row: Quote, Interval
         JPanel row3 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        row3.add(new JLabel("Interval:"));
+        row3.add(new JLabel("Quote:"));
+        quoteCombo = new JComboBox<>();
+        quoteCombo.setEnabled(false);
+        quoteCombo.addActionListener(e -> onQuoteChanged());
+        row3.add(quoteCombo);
+
+        row3.add(new JLabel("Contract:"));
+        contractLabel = new JLabel("None");
+        row3.add(contractLabel);
+
+        panel.add(row3);
+        panel.add(Box.createVerticalStrut(5));
+
+        // Forth row: Interval and dates
+        JPanel row4 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
+        row4.add(new JLabel("Interval:"));
         intervalCombo = new JComboBox<>();
         intervalCombo.setEnabled(false);
-        row3.add(intervalCombo);
+        row4.add(intervalCombo);
 
-        row3.add(new JLabel("Begin Date:"));
+        row4.add(new JLabel("Begin Date:"));
         beginDateTF = new JTextField("01.01.2024", 10);
-        row3.add(beginDateTF);
+        row4.add(beginDateTF);
 
-        row3.add(new JLabel("End Date:"));
+        row4.add(new JLabel("End Date:"));
         endDateTF = new JTextField("31.12.2024", 10);
-        row3.add(endDateTF);
+        row4.add(endDateTF);
 
-        row3.add(Box.createHorizontalStrut(20));
+        row4.add(Box.createHorizontalStrut(20));
 
         getDataButton = new JButton("Get Data");
         getDataButton.setEnabled(false);
         getDataButton.addActionListener(this::onGetDataButton);
-        row3.add(getDataButton);
+        row4.add(getDataButton);
 
-        panel.add(row3);
+        panel.add(row4);
         panel.add(Box.createVerticalStrut(10));
 
         return panel;
@@ -219,6 +225,11 @@ public class SwingApp {
 
     private void onDataSourceChanged() {
         resetConnectionState();
+    }
+
+    private void onQuoteChanged() {
+        Quote selectedQuote = (Quote) quoteCombo.getSelectedItem();
+        marketLabel.setText(selectedQuote.mic);
     }
 
     private void onGetDataButton(ActionEvent e) {

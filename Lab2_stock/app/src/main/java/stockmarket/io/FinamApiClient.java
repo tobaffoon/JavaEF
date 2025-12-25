@@ -1,4 +1,4 @@
-package stockmarket.datasource;
+package stockmarket.io;
 
 import stockmarket.model.Quote;
 import stockmarket.model.TradeData;
@@ -19,6 +19,7 @@ public class FinamApiClient extends DataSourceBase {
 
     private static final String API_BASE_URL = "https://api.finam.ru/v1/";
     private static final String ASSETS_URL = API_BASE_URL + "assets";
+    private static final String EXCHANGES_URL = API_BASE_URL + "exchanges";
 
     private OkHttpClient httpClient;
     private String jwtToken;
@@ -28,6 +29,7 @@ public class FinamApiClient extends DataSourceBase {
     private ArrayList<String> intervalList;
 
     private Map<String, String> intervalMap;
+    private Map<String, String> exchangesNames;
 
     public FinamApiClient() {
         this.data = new ArrayList<>();
@@ -129,11 +131,11 @@ public class FinamApiClient extends DataSourceBase {
                     return token;
                 } else {
                     // Log full response for debugging
-                    System.err.println("Authentication response doesn't contain expected fields. Full response: " + responseBody);
+                    System.out.println("Authentication response doesn't contain expected fields. Full response: " + responseBody);
                     throw new IOException("Authentication response missing session token/sid");
                 }
             } catch (JsonSyntaxException e) {
-                System.err.println("Failed to parse authentication response: " + e.getMessage());
+                System.out.println("Failed to parse authentication response: " + e.getMessage());
                 throw new IOException("Invalid JSON in authentication response: " + e.getMessage());
             }
         }
@@ -155,98 +157,146 @@ public class FinamApiClient extends DataSourceBase {
             System.out.println("Assets API response status: " + response.code());
             
             if (!response.isSuccessful()) {
-                System.err.println("Failed to load assets from API: " + responseBody);
+                System.out.println("Failed to load assets from API: " + responseBody);
                 return quoteList;
             }
-            
-            if (responseBody == null || responseBody.trim().isEmpty()) {
-                System.err.println("Empty assets response");
-                return quoteList;
+            if (exchangesNames == null) {
+                exchangesNames = getExchangesNames();
             }
-            
-            // Parse the assets response
-            try {
-                JsonElement element = JsonParser.parseString(responseBody);
-                JsonArray assetsArray = null;
-                
-                // Handle different response formats
-                if (element.isJsonArray()) {
-                    assetsArray = element.getAsJsonArray();
-                } else if (element.isJsonObject()) {
-                    JsonObject responseObj = element.getAsJsonObject();
-                    // Try common field names for assets array
-                    if (responseObj.has("assets")) {
-                        assetsArray = responseObj.getAsJsonArray("assets");
-                    } else if (responseObj.has("data")) {
-                        assetsArray = responseObj.getAsJsonArray("data");
-                    } else if (responseObj.has("payload")) {
-                        assetsArray = responseObj.getAsJsonArray("payload");
-                    }
-                }
-                
-                if (assetsArray == null) {
-                    System.err.println("Could not find assets array in response");
-                    return quoteList;
-                }
-                                
-                for (JsonElement assetElement : assetsArray) {
-                    if (!assetElement.isJsonObject()) {
-                        continue;
-                    }
-                    JsonObject asset = assetElement.getAsJsonObject();
-                    
-                    // Extract asset information
-                    String ticker = "";
-                    String isin = "";
-                    String mic = "";
-                    String name = "";
-                    
-                    // Try different field names for the identifier
-                    if (asset.has("ticker")) {
-                        ticker = asset.get("ticker").getAsString();
-                    } else if (asset.has("code")) {
-                        ticker = asset.get("code").getAsString();
-                    }
-                    
-                    if (asset.has("isin")) {
-                        isin = asset.get("isin").getAsString();
-                    }
-                    if (asset.has("mic")) {
-                        mic = asset.get("mic").getAsString();
-                    }
-                    
-                    if (asset.has("name")) {
-                        name = asset.get("name").getAsString();
-                    } else if (asset.has("description")) {
-                        name = asset.get("description").getAsString();
-                    }
-                    
-                    Quote quote = new Quote();
-                    quote.ticker = ticker;
-                        quote.isin = isin;
-                    if (!name.isEmpty()) {
-                        quote.name = name;
-                    } else {
-                        quote.name = ticker;
-                    }
-                    if (mic != null) {
-                        quote.mic = mic;
-                    }
-                    
-                    // Add the quote name to the list
-                    quoteList.add(quote);
-                }
-                
-                System.out.println("Successfully loaded " + quoteList.size() + " assets from API");               
-            } catch (JsonSyntaxException e) {
-                System.err.println("Failed to parse assets response: " + e.getMessage());
-            }
+            quoteList = parseAssetsResponse(responseBody);
         } catch (Exception e) {
-            System.err.println("Error loading assets from API: " + e.getMessage());
+            System.out.println("Error loading assets from API: " + e.getMessage());
             e.printStackTrace();
         }
 
         return quoteList;
+    }
+
+    private HashMap<String, String> getExchangesNames() throws Exception {
+        var exchangeMap = new HashMap<String, String>();
+
+        Request request = new Request.Builder()
+                .url(EXCHANGES_URL)
+                .get()
+                .addHeader("Authorization", jwtToken)
+                .build();
+        
+        try (Response response = httpClient.newCall(request).execute()) {
+            String responseBody = response.body().string();
+            
+            System.out.println("Exchanges API response status: " + response.code());
+            
+            if (!response.isSuccessful()) {
+                System.out.println("Failed to load exchanges from API: " + responseBody);
+                return exchangeMap;
+            }
+            exchangeMap = parseExchangesMap(responseBody);
+        } catch (Exception e) {
+            System.out.println("Error loading exchanges from API: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return exchangeMap;
+    }
+
+    private ArrayList<Quote> parseAssetsResponse(String jsonResponse) throws Exception {
+        var quoteList = new ArrayList<Quote>();
+        JsonElement element = JsonParser.parseString(jsonResponse);
+        JsonArray assetsArray = null;
+        
+        if (element.isJsonObject()) {
+            JsonObject responseObj = element.getAsJsonObject();
+            if (responseObj.has("assets")) {
+                assetsArray = responseObj.getAsJsonArray("assets");
+            }
+        }
+        
+        if (assetsArray == null) {
+            System.out.println("Could not find assets array in response");
+            return quoteList;
+        }
+                        
+        for (JsonElement assetElement : assetsArray) {
+            if (!assetElement.isJsonObject()) {
+                continue;
+            }
+            JsonObject asset = assetElement.getAsJsonObject();
+            
+            String ticker = "";
+            String isin = "";
+            String mic = "";
+            String name = "";
+            
+            if (asset.has("ticker")) {
+                ticker = asset.get("ticker").getAsString();
+            }            
+            if (asset.has("isin")) {
+                isin = asset.get("isin").getAsString();
+            }
+            if (asset.has("mic")) {
+                mic = asset.get("mic").getAsString();
+            }
+            if (asset.has("name")) {
+                name = asset.get("name").getAsString();
+            }
+            
+            Quote quote = new Quote();
+            quote.ticker = ticker;
+            quote.isin = isin;
+            quote.name = name;
+            if(exchangesNames.containsKey(mic)){
+                quote.mic = exchangesNames.get(mic);
+            } else{
+                quote.mic = mic;
+            }
+
+            quoteList.add(quote);
+        }
+        
+        System.out.println("Successfully loaded " + quoteList.size() + " assets from API");               
+    
+        return quoteList;
+    }
+
+    private HashMap<String, String> parseExchangesMap(String jsonResponse) throws Exception {
+        var exchangeMap = new HashMap<String, String>();
+        JsonElement element = JsonParser.parseString(jsonResponse);
+        JsonArray exchangesArray = null;
+        
+        if (element.isJsonObject()) {
+            JsonObject responseObj = element.getAsJsonObject();
+            if (responseObj.has("exchanges")) {
+                exchangesArray = responseObj.getAsJsonArray("exchanges");
+            }
+        }
+        
+        if (exchangesArray == null) {
+            System.out.println("Could not find exchanges array in response");
+            return exchangeMap;
+        }
+                        
+        for (JsonElement exchangeElement : exchangesArray) {
+            if (!exchangeElement.isJsonObject()) {
+                continue;
+            }
+            JsonObject asset = exchangeElement.getAsJsonObject();
+            
+            String mic = "";
+            String name = "";
+            
+            if (asset.has("mic")) {
+                mic = asset.get("mic").getAsString();
+            }
+            if (asset.has("name")) {
+                name = asset.get("name").getAsString();
+            }
+            
+            exchangeMap.put(mic, name);
+        }
+        
+        System.out.println("Successfully loaded " + exchangeMap.size() + " exchanges from API");               
+    
+        return exchangeMap;
     }
 
     @Override

@@ -1,4 +1,4 @@
-package stockmarket.datasource;
+package stockmarket.io;
 
 import stockmarket.model.Quote;
 import stockmarket.model.TradeData;
