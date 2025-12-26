@@ -52,12 +52,10 @@ public class FinamApiClient implements DataSourceBase {
         try {
             System.out.println("Connecting to Finam API...");
             
-            // Secret should be set by SwingApp before calling connect()
             if (secretToken == null || secretToken.isEmpty()) {
                 throw new InterruptedException("Secret token is not set. Please set secret before connecting.");
             }
             
-            // Authenticate with Finam API using the secret
             System.out.println("Authenticating with Finam API...");
             String sessionToken = authenticateWithFinam();
             
@@ -108,11 +106,9 @@ public class FinamApiClient implements DataSourceBase {
     }
 
     private String authenticateWithFinam() throws IOException {        
-        // Create JSON request body
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("secret", secretToken);
         
-        // Create request with JSON body
         okhttp3.MediaType jsonMediaType = okhttp3.MediaType.get("application/json; charset=utf-8");
         okhttp3.RequestBody body = okhttp3.RequestBody.create(requestBody.toString(), jsonMediaType);
         
@@ -135,11 +131,9 @@ public class FinamApiClient implements DataSourceBase {
                 throw new IOException("Empty authentication response");
             }
             
-            // Parse the response to extract session token
             try {
                 JsonObject responseJson = JsonParser.parseString(responseBody).getAsJsonObject();
                 
-                // Extract session ID or token from response
                 if (responseJson.has("sid")) {
                     String sessionId = responseJson.get("sid").getAsString();
                     System.out.println("Session established: " + sessionId);
@@ -149,12 +143,10 @@ public class FinamApiClient implements DataSourceBase {
                     System.out.println("Token obtained from authentication");
                     return token;
                 } else {
-                    // Log full response for debugging
                     System.out.println("Authentication response doesn't contain expected fields. Full response: " + responseBody);
                     throw new IOException("Authentication response missing session token/sid");
                 }
             } catch (JsonSyntaxException e) {
-                System.out.println("Failed to parse authentication response: " + e.getMessage());
                 throw new IOException("Invalid JSON in authentication response: " + e.getMessage());
             }
         }

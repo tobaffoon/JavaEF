@@ -14,7 +14,6 @@ import stockmarket.model.Bar;
 
 import javax.swing.JPanel;
 import java.awt.Color;
-import java.text.SimpleDateFormat;
 import java.util.List;
 
 public final class CandlestickChartPanel extends JPanel {
@@ -30,7 +29,6 @@ public final class CandlestickChartPanel extends JPanel {
     }
 
     private JFreeChart buildChart(String title, List<Bar> bars) {
-        DateAxis domainAxis = new DateAxis("Time");
         BarSeriesBuilder barBuilder = new BarSeriesBuilder(bars);
 
         OHLCSeriesCollection priceDataset = barBuilder.buildOhlcDataset();
@@ -42,7 +40,7 @@ public final class CandlestickChartPanel extends JPanel {
 
         XYPlot pricePlot = new XYPlot(
                 priceDataset,
-                domainAxis,
+                null,
                 priceAxis,
                 candleRenderer
         );
@@ -57,7 +55,7 @@ public final class CandlestickChartPanel extends JPanel {
 
         XYPlot volumePlot = new XYPlot(
                 volumeDataset,
-                domainAxis,
+                null,
                 volumeAxis,
                 volumeRenderer
         );
@@ -84,7 +82,6 @@ public final class CandlestickChartPanel extends JPanel {
 
     private DateAxis createDateAxis() {
         DateAxis axis = new DateAxis("Time");
-        axis.setDateFormatOverride(new SimpleDateFormat("HH:mm"));
         axis.setLowerMargin(0.02);
         axis.setUpperMargin(0.02);
         return axis;

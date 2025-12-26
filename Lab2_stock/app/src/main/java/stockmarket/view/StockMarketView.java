@@ -27,9 +27,5 @@ public interface StockMarketView {
 
     LocalDateTime getBeginDate();
 
-    void setBeginDate(LocalDateTime date);
-
     LocalDateTime getEndDate();
-
-    void setEndDate(LocalDateTime date);
 }

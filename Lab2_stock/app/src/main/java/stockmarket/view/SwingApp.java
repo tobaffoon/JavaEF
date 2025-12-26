@@ -85,26 +85,9 @@ public class SwingApp implements StockMarketView {
         SwingUtilities.invokeLater(() -> new SwingApp().createAndShowGUI());
     }
 
-
     @Override
     public Interval getSelectedInterval() {
         return (Interval)intervalCombo.getSelectedItem();
-    }
-
-    @Override
-    public void setBeginDate(LocalDateTime date) {
-        String dateStr = TimeUtils.formatDate(date);
-        String timeStr = TimeUtils.formatTime(date);
-        beginDateTF.setText(dateStr);
-        beginTimeTF.setText(timeStr);
-    }
-
-    @Override
-    public void setEndDate(LocalDateTime date) {
-        String dateStr = TimeUtils.formatDate(date);
-        String timeStr = TimeUtils.formatTime(date);
-        endDateTF.setText(dateStr);
-        endTimeTF.setText(timeStr);
     }
 
     @Override
@@ -379,6 +362,7 @@ public class SwingApp implements StockMarketView {
             updateIndicatorCombo();
             rebuildCharts();
         } catch (Exception e) {
+            onRemoveIndicators();
             setError(e);
         }
     }
@@ -396,9 +380,8 @@ public class SwingApp implements StockMarketView {
         if (bars == null || bars.isEmpty()) return;
 
         if (separateChartCB.isSelected()) {
-            // Separate charts for each indicator
             for (Indicator indicator : activeIndicators) {
-                if(indicator == null) {
+                if (indicator == null) {
                     continue;
                 }
                 XYPlot plot = controller.buildIndicatorPlot(bars, indicator);
@@ -422,7 +405,6 @@ public class SwingApp implements StockMarketView {
                 indicatorsPanel.add(chartPanel);
             }
         } else {
-            // Combined chart for all indicators
             if (!activeIndicators.isEmpty()) {
                 XYPlot plot = new IndicatorSeriesBuilder(bars).buildPlot(activeIndicators);
                 JFreeChart chart = new JFreeChart(plot);
@@ -584,7 +566,6 @@ public class SwingApp implements StockMarketView {
 
                     showChart(bars, selectedQuote, beginDate, endDate);
                     updateUIAfterBarsRequest();
-
                 } catch (Exception ex) {
                     setError(ex);
                 } finally {

@@ -27,6 +27,12 @@ public class IndicatorSeriesBuilder {
     }
 
     public XYPlot buildPlot(Indicator indicator) {
+        if(closes.size() < indicator.warmupPeriod()) {
+            throw new IllegalArgumentException(
+                    "Not enough data to compute indicator: " + indicator.toString()
+            );
+        }
+        
         TimeSeries series = new TimeSeries(indicator.toString());
         addIndicatorSeries(series, indicator);
 
@@ -39,6 +45,12 @@ public class IndicatorSeriesBuilder {
         Color[] colors = {Color.BLUE, Color.RED, Color.GREEN, Color.ORANGE, Color.MAGENTA};
         for (int i = 0; i < indicators.size(); i++) {
             Indicator indicator = indicators.get(i);
+            if(closes.size() < indicator.warmupPeriod()) {
+                throw new IllegalArgumentException(
+                        "Not enough data to compute indicator: " + indicator.toString()
+                );
+            }
+
             TimeSeries series = new TimeSeries(indicator.toString());
             addIndicatorSeries(series, indicator);
             ds.addSeries(series);
