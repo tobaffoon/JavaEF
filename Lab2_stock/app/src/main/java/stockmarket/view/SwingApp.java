@@ -7,8 +7,6 @@ import stockmarket.model.Quote;
 import stockmarket.model.Interval;
 import stockmarket.utils.TimeUtils;
 
-import org.apache.poi.ss.formula.eval.NotImplementedException;
-
 import javax.swing.*;
 import javax.swing.text.MaskFormatter;
 import java.awt.*;
@@ -21,6 +19,7 @@ import java.util.List;
 public class SwingApp implements StockMarketView {
     private static final String TIME_MASK = "##:##:##";
     private static final String DATE_MASK = "##.##.####";
+    private static final String STATUS_READY = "Status: Ready";
     private static final Color SUCCESSFUL_TEXT_COLOR = new Color(0, 120, 0);
     private static final Color ERROR_TEXT_COLOR = new Color(200, 0, 0);
     private static final Color INFO_COLOR = Color.BLUE;
@@ -111,16 +110,20 @@ public class SwingApp implements StockMarketView {
     }
 
     @Override
-    public void setStatus(String status, Color color) {
+    public void setConnectionStatus(String status, Color color) {
         connectionLabel.setText(status);
         connectionLabel.setForeground(color);
-        connectionLabel.repaint();
-        connectionLabel.revalidate();
+    }
+
+    @Override
+    public void setExecutionStatus(String status, Color color) {
+        statusLabel.setText(status);
+        statusLabel.setForeground(color);
     }
 
     @Override
     public void setError(Exception e) {
-        setStatus("ERROR: " + e.getMessage(), ERROR_TEXT_COLOR);
+        setExecutionStatus("ERROR: " + e.getMessage(), ERROR_TEXT_COLOR);
     }
 
     private void createAndShowGUI() {
@@ -195,7 +198,6 @@ public class SwingApp implements StockMarketView {
         JPanel row4 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         row4.add(new JLabel("Interval:"));
         intervalCombo = new JComboBox<>();
-        intervalCombo.setEnabled(false);
         row4.add(intervalCombo);
 
         try{
@@ -233,7 +235,7 @@ public class SwingApp implements StockMarketView {
         row4.add(Box.createHorizontalStrut(20));
 
         getDataButton = new JButton("Get Data");
-        getDataButton.setEnabled(false);
+        // getDataButton.setEnabled(false);
         getDataButton.addActionListener(this::onGetDataButton);
         row4.add(getDataButton);
 
@@ -242,6 +244,7 @@ public class SwingApp implements StockMarketView {
 
         // Data inits
         initDataSourceList();
+        initIntervals();
 
         return panel;
     }
@@ -295,7 +298,7 @@ public class SwingApp implements StockMarketView {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         panel.setBorder(BorderFactory.createEtchedBorder());
 
-        statusLabel = new JLabel("Status: Ready");
+        statusLabel = new JLabel(STATUS_READY);
         statusLabel.setForeground(Color.BLUE);
         panel.add(statusLabel);
 
@@ -308,6 +311,12 @@ public class SwingApp implements StockMarketView {
             dataSourceCombo.addItem(source);
         }
         dataSourceCombo.setSelectedIndex(0);
+    }
+
+    private void initIntervals() {
+        for (Interval interval : Interval.values()) {
+            intervalCombo.addItem(interval);
+        }
     }
 
     private void onDataSourceChanged() {
@@ -324,9 +333,10 @@ public class SwingApp implements StockMarketView {
         if(controller.getSelectedDataSource() instanceof FinamApiClient finamClient){
             connectButton.setEnabled(false);
             quoteCombo.setEnabled(false);
+            getDataButton.setEnabled(false);
 
             String secret = promptForFinamSecret();
-            setStatus("Connecting...", INFO_COLOR);
+            setConnectionStatus("Connecting...", INFO_COLOR);
 
             SwingUtilities.invokeLater(() -> {
                 controller.connectToFinam(finamClient, secret);
@@ -337,6 +347,7 @@ public class SwingApp implements StockMarketView {
 
     private void updateUIAfterConnection() {
         quoteCombo.setEnabled(true);
+        getDataButton.setEnabled(true);
         List<Quote> quoteList = controller.getQuoteList();
         setQuoteOptions(quoteList);
 
@@ -344,11 +355,26 @@ public class SwingApp implements StockMarketView {
             quoteCombo.setSelectedIndex(0);
         }
 
-        setStatus("Connected!", SUCCESSFUL_TEXT_COLOR);
+        setConnectionStatus("Connected!", SUCCESSFUL_TEXT_COLOR);
     }
 
     private void onGetDataButton(ActionEvent e) {
-        throw new NotImplementedException("Data fetching not implemented yet.");
+        try {
+            LocalDateTime beginDate = getBeginDate();
+            LocalDateTime endDate = getEndDate();
+            Interval interval = getSelectedInterval();
+
+            if(beginDate.isAfter(endDate)) {
+                throw new Exception("Begin date must be before End date.");
+            }
+            if(!interval.isTimeSpanSufficient(beginDate, endDate)) {
+                throw new Exception("Selected interval is too big for the specified time span.");
+            }
+
+            setExecutionStatus(STATUS_READY, INFO_COLOR);
+        } catch (Exception ex) {
+            setError(ex);
+        }
         // try {
 
         //     if (currentDataSource == null) {

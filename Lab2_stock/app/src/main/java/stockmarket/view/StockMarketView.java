@@ -10,9 +10,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface StockMarketView {
-    // void resetConnectionState();
 
-    void setStatus(String status, Color color);
+    void setConnectionStatus(String status, Color color);
+
+    void setExecutionStatus(String status, Color color);
 
     void setError(Exception exception);
 
