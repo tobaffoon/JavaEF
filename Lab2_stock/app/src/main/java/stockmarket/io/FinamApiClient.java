@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class FinamApiClient extends DataSourceBase {
+public class FinamApiClient implements DataSourceBase {
 
     private static final String API_BASE_URL = "https://api.finam.ru/v1/";
     private static final String ASSETS_URL = API_BASE_URL + "assets";
@@ -26,39 +26,25 @@ public class FinamApiClient extends DataSourceBase {
     private String secretToken;
     private boolean isConnected = false;
 
-    private ArrayList<String> intervalList;
-
-    private Map<String, String> intervalMap;
     private Map<String, String> exchangesNames;
 
     public FinamApiClient() {
-        this.data = new ArrayList<>();
         this.httpClient = new OkHttpClient();
-        initIntervalMap();
-        initDataLists();
     }
 
-    private void initIntervalMap() {
-        intervalMap = new HashMap<>();
-        intervalMap.put("Тики", "TICKS");
-        intervalMap.put("1 мин", "1min");
-        intervalMap.put("5 мин", "5min");
-        intervalMap.put("10 мин", "10min");
-        intervalMap.put("15 мин", "15min");
-        intervalMap.put("30 мин", "30min");
-        intervalMap.put("1 час", "1hour");
-        intervalMap.put("1 день", "1day");
-        intervalMap.put("1 неделя", "1week");
-        intervalMap.put("1 месяц", "1month");
+    public void setSecretToken(String token) throws IOException {
+        if (token == null || token.isEmpty()) {
+            throw new IOException("Auth token must be non-empty");
+        }
+        this.secretToken = token;
     }
 
-    private void initDataLists() {                
-        intervalList = new ArrayList<>();
-        intervalList.addAll(intervalMap.keySet());
+    public String getToken() {
+        return jwtToken;
     }
 
     @Override
-    public void connect() throws InterruptedException {
+    public void connect() throws Exception {
         try {
             System.out.println("Connecting to Finam API...");
             
@@ -82,6 +68,37 @@ public class FinamApiClient extends DataSourceBase {
             isConnected = false;
             throw new InterruptedException("Failed to connect to Finam API: " + e.getMessage());
         }
+    }
+
+    @Override
+    public ArrayList<Quote> getQuotesList() throws Exception {
+        var quoteList = new ArrayList<Quote>();
+
+        Request request = new Request.Builder()
+                .url(ASSETS_URL)
+                .get()
+                .addHeader("Authorization", jwtToken)
+                .build();
+        
+        try (Response response = httpClient.newCall(request).execute()) {
+            String responseBody = response.body().string();
+            
+            System.out.println("Assets API response status: " + response.code());
+            
+            if (!response.isSuccessful()) {
+                System.out.println("Failed to load assets from API: " + responseBody);
+                return quoteList;
+            }
+            if (exchangesNames == null) {
+                exchangesNames = getExchangesNames();
+            }
+            quoteList = parseAssetsResponse(responseBody);
+        } catch (Exception e) {
+            System.out.println("Error loading assets from API: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return quoteList;
     }
 
     private String authenticateWithFinam() throws IOException {
@@ -141,35 +158,61 @@ public class FinamApiClient extends DataSourceBase {
         }
     }
 
-    @Override
-    public ArrayList<Quote> getQuotesList() throws Exception {
-        var quoteList = new ArrayList<Quote>();
-
-        Request request = new Request.Builder()
-                .url(ASSETS_URL)
-                .get()
-                .addHeader("Authorization", jwtToken)
-                .build();
-        
-        try (Response response = httpClient.newCall(request).execute()) {
-            String responseBody = response.body().string();
-            
-            System.out.println("Assets API response status: " + response.code());
-            
-            if (!response.isSuccessful()) {
-                System.out.println("Failed to load assets from API: " + responseBody);
-                return quoteList;
-            }
-            if (exchangesNames == null) {
-                exchangesNames = getExchangesNames();
-            }
-            quoteList = parseAssetsResponse(responseBody);
-        } catch (Exception e) {
-            System.out.println("Error loading assets from API: " + e.getMessage());
-            e.printStackTrace();
+    private void parseApiResponse(String jsonResponse) throws Exception {
+        if (jsonResponse == null || jsonResponse.trim().isEmpty()) {
+            throw new Exception("Empty response body");
         }
 
-        return quoteList;
+        try {
+            JsonObject root = JsonParser.parseString(jsonResponse).getAsJsonObject();
+            JsonArray barsArray = root.getAsJsonArray("bars");
+
+            if (barsArray == null) {
+                // Check if response contains error message
+                if (root.has("error")) {
+                    throw new Exception("API Error: " + root.get("error").getAsString());
+                }
+                throw new Exception("Invalid API response format - 'bars' array not found");
+            }
+
+            if (barsArray.size() == 0) {
+                System.out.println("API returned empty bars array, using mock data");
+                return;
+            }
+
+            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+            for (JsonElement element : barsArray) {
+                JsonObject bar = element.getAsJsonObject();
+
+                double open = bar.get("o").getAsDouble();
+                double high = bar.get("h").getAsDouble();
+                double low = bar.get("l").getAsDouble();
+                double close = bar.get("c").getAsDouble();
+                long volume = bar.get("v").getAsLong();
+                String timestamp = bar.get("ts").getAsString();
+
+                // Parse timestamp
+                LocalDateTime dateTime = LocalDateTime.parse(timestamp.substring(0, 19));
+                String dateStr = dateTime.format(dateFormatter);
+                long time = dateTime.getHour() * 3600 + dateTime.getMinute() * 60;
+
+                // TradeData tradeData = new TradeData(
+                //         config.getSelectedSymbol(),
+                //         time,
+                //         open,
+                //         close,
+                //         volume,
+                //         dateStr,
+                //         high,
+                //         low
+                // );
+                // data.add(tradeData);
+            }
+        } catch (JsonSyntaxException jsonError) {
+            throw new Exception("JSON parsing error: " + jsonError.getMessage() +
+                    ". Response may not be valid JSON. Enable lenient parsing or check API response format.");
+        }
     }
 
     private HashMap<String, String> getExchangesNames() throws Exception {
@@ -297,83 +340,6 @@ public class FinamApiClient extends DataSourceBase {
         System.out.println("Successfully loaded " + exchangeMap.size() + " exchanges from API");               
     
         return exchangeMap;
-    }
-
-    @Override
-    public ArrayList<String> getIntervalList() throws Exception {
-        return new ArrayList<>(intervalList);
-    }
-
-    public void setSecretToken(String token) throws IOException {
-        if (token == null || token.isEmpty()) {
-            throw new IOException("Auth token must be non-empty");
-        }
-        this.secretToken = token;
-    }
-
-    private void parseApiResponse(String jsonResponse) throws Exception {
-        if (jsonResponse == null || jsonResponse.trim().isEmpty()) {
-            throw new Exception("Empty response body");
-        }
-
-        try {
-            JsonObject root = JsonParser.parseString(jsonResponse).getAsJsonObject();
-            JsonArray barsArray = root.getAsJsonArray("bars");
-
-            if (barsArray == null) {
-                // Check if response contains error message
-                if (root.has("error")) {
-                    throw new Exception("API Error: " + root.get("error").getAsString());
-                }
-                throw new Exception("Invalid API response format - 'bars' array not found");
-            }
-
-            if (barsArray.size() == 0) {
-                System.out.println("API returned empty bars array, using mock data");
-                return;
-            }
-
-            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
-            for (JsonElement element : barsArray) {
-                JsonObject bar = element.getAsJsonObject();
-
-                double open = bar.get("o").getAsDouble();
-                double high = bar.get("h").getAsDouble();
-                double low = bar.get("l").getAsDouble();
-                double close = bar.get("c").getAsDouble();
-                long volume = bar.get("v").getAsLong();
-                String timestamp = bar.get("ts").getAsString();
-
-                // Parse timestamp
-                LocalDateTime dateTime = LocalDateTime.parse(timestamp.substring(0, 19));
-                String dateStr = dateTime.format(dateFormatter);
-                long time = dateTime.getHour() * 3600 + dateTime.getMinute() * 60;
-
-                // TradeData tradeData = new TradeData(
-                //         config.getSelectedSymbol(),
-                //         time,
-                //         open,
-                //         close,
-                //         volume,
-                //         dateStr,
-                //         high,
-                //         low
-                // );
-                // data.add(tradeData);
-            }
-        } catch (JsonSyntaxException jsonError) {
-            throw new Exception("JSON parsing error: " + jsonError.getMessage() +
-                    ". Response may not be valid JSON. Enable lenient parsing or check API response format.");
-        }
-    }
-
-    public boolean isConnected() {
-        return isConnected;
-    }
-
-    public String getToken() {
-        return jwtToken;
     }
 
     @Override
