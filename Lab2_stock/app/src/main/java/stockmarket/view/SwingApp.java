@@ -435,7 +435,18 @@ public class SwingApp implements StockMarketView {
                 new CandlestickChartPanel(title, bars, indicatorConfig);
 
         org.jfree.chart.ChartPanel jfChartPanel =
-                new org.jfree.chart.ChartPanel(chartPanel.getChart());
+        new org.jfree.chart.ChartPanel(
+                chartPanel.getChart(),
+                false,   // properties
+                false,   // save
+                false,   // print
+                false,   // zoom
+                false    // tooltips
+        );
+
+        jfChartPanel.setPopupMenu(null);
+        jfChartPanel.setDomainZoomable(true);
+        jfChartPanel.setRangeZoomable(false);
 
         chartContainer.add(jfChartPanel, BorderLayout.CENTER);
         chartContainer.revalidate();
