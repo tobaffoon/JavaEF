@@ -30,6 +30,7 @@ public final class CandlestickChartPanel extends JPanel {
     }
 
     private JFreeChart buildChart(String title, List<Bar> bars) {
+        DateAxis domainAxis = new DateAxis("Time");
         BarSeriesBuilder barBuilder = new BarSeriesBuilder(bars);
 
         OHLCSeriesCollection priceDataset = barBuilder.buildOhlcDataset();
@@ -41,7 +42,7 @@ public final class CandlestickChartPanel extends JPanel {
 
         XYPlot pricePlot = new XYPlot(
                 priceDataset,
-                null,
+                domainAxis,
                 priceAxis,
                 candleRenderer
         );
@@ -56,7 +57,7 @@ public final class CandlestickChartPanel extends JPanel {
 
         XYPlot volumePlot = new XYPlot(
                 volumeDataset,
-                null,
+                domainAxis,
                 volumeAxis,
                 volumeRenderer
         );

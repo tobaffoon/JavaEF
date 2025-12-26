@@ -15,6 +15,7 @@ import stockmarket.utils.TimeUtils;
 import javax.swing.*;
 import javax.swing.text.MaskFormatter;
 
+import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.XYPlot;
 
@@ -167,7 +168,7 @@ public class SwingApp implements StockMarketView {
         JPanel statusPanel = createStatusPanel();
         frame.add(statusPanel, BorderLayout.SOUTH);
 
-        frame.setSize(900, 900);
+        frame.setSize(1350, 900);
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
@@ -356,11 +357,21 @@ public class SwingApp implements StockMarketView {
         for (Indicator indicator : activeIndicators) {
             XYPlot plot = controller.buildIndicatorPlot(bars, indicator);
             JFreeChart chart = new JFreeChart(plot);
-            org.jfree.chart.ChartPanel chartPanel = new org.jfree.chart.ChartPanel(chart);
+            ChartPanel chartPanel = new ChartPanel(
+                chart,
+                false,   // properties
+                false,   // save
+                false,   // print
+                false,   // zoom
+                false    // tooltips
+            );
+            chartPanel.setPopupMenu(null);
+            chartPanel.setDomainZoomable(false);
+            chartPanel.setRangeZoomable(false);
 
             // Reduce height
             Dimension prefSize = chartPanel.getPreferredSize();
-            chartPanel.setPreferredSize(new Dimension(prefSize.width, (int)(prefSize.height / 1.5)));
+            chartPanel.setPreferredSize(new Dimension(prefSize.width, (int)(prefSize.height / 4.5)));
 
             indicatorsPanel.add(chartPanel);
         }
@@ -515,15 +526,15 @@ public class SwingApp implements StockMarketView {
         CandlestickChartPanel chartPanel =
                 new CandlestickChartPanel(title, bars);
 
-        org.jfree.chart.ChartPanel jfChartPanel =
-        new org.jfree.chart.ChartPanel(
-                chartPanel.getChart(),
-                false,   // properties
-                false,   // save
-                false,   // print
-                false,   // zoom
-                false    // tooltips
-        );
+        ChartPanel jfChartPanel =
+            new ChartPanel(
+                    chartPanel.getChart(),
+                    false,   // properties
+                    false,   // save
+                    false,   // print
+                    false,   // zoom
+                    false    // tooltips
+            );
 
         jfChartPanel.setPopupMenu(null);
         jfChartPanel.setDomainZoomable(true);
