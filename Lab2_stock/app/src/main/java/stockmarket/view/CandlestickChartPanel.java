@@ -31,10 +31,7 @@ public final class CandlestickChartPanel extends JPanel {
 
     private JFreeChart buildChart(String title, List<Bar> bars) {
         BarSeriesBuilder barBuilder = new BarSeriesBuilder(bars);
-        IndicatorSeriesBuilder indicatorBuilder =
-                new IndicatorSeriesBuilder(bars);
 
-        /* ---- Price (candles) ---- */
         OHLCSeriesCollection priceDataset = barBuilder.buildOhlcDataset();
         NumberAxis priceAxis = new NumberAxis("Price");
         priceAxis.setAutoRangeIncludesZero(false);
@@ -50,7 +47,6 @@ public final class CandlestickChartPanel extends JPanel {
         );
         pricePlot.setBackgroundPaint(Color.WHITE);
 
-        /* ---- Volume ---- */
         TimeSeriesCollection volumeDataset = barBuilder.buildVolumeDataset();
         NumberAxis volumeAxis = new NumberAxis("Volume");
         volumeAxis.setAutoRangeIncludesZero(true);

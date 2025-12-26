@@ -45,10 +45,7 @@ public class SwingApp implements StockMarketView {
     private JLabel connectionLabel;
     private JButton connectButton;
     private JButton getDataButton;
-    private JCheckBox emaCheckBox;
-    private JCheckBox macdCheckBox;
-    private JCheckBox smaCheckBox;
-    private JPanel chartContainer;
+    private JPanel candleChartPanel;
     private JComboBox<Indicator> indicatorCombo;
     private JTextField periodTF;
     private JTextField fastTF;
@@ -56,7 +53,8 @@ public class SwingApp implements StockMarketView {
     private JCheckBox separateChartCB;
     private JButton addIndicatorBtn;
     private JButton removeIndicatorBtn;
-    
+    private JPanel indicatorsPanel;
+
     private final List<Indicator> activeIndicators = new ArrayList<>();
     private StockMarketController controller;
 
@@ -149,22 +147,27 @@ public class SwingApp implements StockMarketView {
         JPanel controlPanel = createControlPanel();
         frame.add(controlPanel, BorderLayout.NORTH);
 
-        // Data and indicator settings
-        chartContainer = new JPanel(new BorderLayout());
-        chartContainer.setBorder(BorderFactory.createTitledBorder("Chart"));
-        frame.add(chartContainer, BorderLayout.CENTER);
+        // Chart panels
+        candleChartPanel = new JPanel();
+        candleChartPanel.setLayout(new BoxLayout(candleChartPanel, BoxLayout.Y_AXIS));
+        candleChartPanel.setBorder(BorderFactory.createTitledBorder("Candlestick Chart"));
 
-        chartContainer = new JPanel();
-        chartContainer.setLayout(new BoxLayout(chartContainer, BoxLayout.Y_AXIS));
+        indicatorsPanel = new JPanel();
+        indicatorsPanel.setLayout(new BoxLayout(indicatorsPanel, BoxLayout.Y_AXIS));
+        indicatorsPanel.setBorder(BorderFactory.createTitledBorder("Indicators"));
 
-        frame.add(new JScrollPane(chartContainer), BorderLayout.CENTER);
-        frame.add(createIndicatorPanel(), BorderLayout.EAST);
+        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
+                new JScrollPane(candleChartPanel), new JScrollPane(indicatorsPanel));
+        splitPane.setResizeWeight(0.7);
+        frame.add(splitPane, BorderLayout.CENTER);
+
+        frame.add(createIndicatorSettingsPanel(), BorderLayout.EAST);
 
         // Status bar
         JPanel statusPanel = createStatusPanel();
         frame.add(statusPanel, BorderLayout.SOUTH);
 
-        frame.setSize(900, 700);
+        frame.setSize(900, 900);
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
@@ -267,7 +270,7 @@ public class SwingApp implements StockMarketView {
         return panel;
     }
 
-    private JPanel createIndicatorPanel() {
+    private JPanel createIndicatorSettingsPanel() {
         JPanel panel = new JPanel();
         panel.setBorder(BorderFactory.createTitledBorder("Indicators"));
         panel.setLayout(new GridBagLayout());
@@ -345,7 +348,7 @@ public class SwingApp implements StockMarketView {
     }
 
     private void rebuildCharts() {
-        chartContainer.removeAll();
+        indicatorsPanel.removeAll();
 
         List<Bar> bars = controller.getLastBars();
         if (bars == null || bars.isEmpty()) return;
@@ -353,13 +356,18 @@ public class SwingApp implements StockMarketView {
         for (Indicator indicator : activeIndicators) {
             XYPlot plot = controller.buildIndicatorPlot(bars, indicator);
             JFreeChart chart = new JFreeChart(plot);
-            chartContainer.add(new org.jfree.chart.ChartPanel(chart));
+            org.jfree.chart.ChartPanel chartPanel = new org.jfree.chart.ChartPanel(chart);
+
+            // Reduce height
+            Dimension prefSize = chartPanel.getPreferredSize();
+            chartPanel.setPreferredSize(new Dimension(prefSize.width, (int)(prefSize.height / 1.5)));
+
+            indicatorsPanel.add(chartPanel);
         }
-
-        chartContainer.revalidate();
-        chartContainer.repaint();
-}
-
+        
+        indicatorsPanel.revalidate();
+        indicatorsPanel.repaint();
+    }
 
     private void updateIndicatorFields() {
         Indicator indicator = (Indicator) indicatorCombo.getSelectedItem();
@@ -498,7 +506,7 @@ public class SwingApp implements StockMarketView {
         LocalDateTime begin,
         LocalDateTime end
     ) {
-        chartContainer.removeAll();
+        candleChartPanel.removeAll();
 
         String title = quote.symbol() + " | " +
                 TimeUtils.formatDate(begin) + " - " +
@@ -521,12 +529,15 @@ public class SwingApp implements StockMarketView {
         jfChartPanel.setDomainZoomable(true);
         jfChartPanel.setRangeZoomable(false);
 
-        chartContainer.add(jfChartPanel, BorderLayout.CENTER);
-        chartContainer.revalidate();
-        chartContainer.repaint();
+        // Reduce height
+        Dimension prefSize = jfChartPanel.getPreferredSize();
+        jfChartPanel.setPreferredSize(new Dimension(prefSize.width, (int)(prefSize.height / 1.5)));
+
+        candleChartPanel.add(jfChartPanel, BorderLayout.CENTER);
+        candleChartPanel.revalidate();
+        candleChartPanel.repaint();
     }
 
-    
     private void updateUIAfterBarsRequest() {
         getDataButton.setEnabled(true);
         setExecutionStatus("Bars received", SUCCESSFUL_TEXT_COLOR);
