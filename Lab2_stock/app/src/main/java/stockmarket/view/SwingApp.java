@@ -1,26 +1,20 @@
 package stockmarket.view;
 
-import stockmarket.candlestick.JfreeCandlestickChart;
 import stockmarket.control.StockMarketController;
 import stockmarket.io.DataSourceBase;
+import stockmarket.io.FinamApiClient;
 import stockmarket.model.Quote;
 import stockmarket.model.Interval;
 import stockmarket.utils.TimeUtils;
 
 import org.apache.poi.ss.formula.eval.NotImplementedException;
-import org.jfree.chart.JFreeChart;
-import org.jfree.chart.block.ColumnArrangement;
-import org.jfree.chart.block.LineBorder;
-import org.jfree.chart.title.LegendTitle;
-import org.jfree.chart.ui.HorizontalAlignment;
-import org.jfree.chart.ui.RectangleEdge;
-import org.jfree.chart.ui.VerticalAlignment;
 
 import javax.swing.*;
 import javax.swing.text.MaskFormatter;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.text.ParseException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,6 +23,7 @@ public class SwingApp implements StockMarketView {
     private static final String DATE_MASK = "##.##.####";
     private static final Color SUCCESSFUL_TEXT_COLOR = new Color(0, 120, 0);
     private static final Color ERROR_TEXT_COLOR = new Color(200, 0, 0);
+    private static final Color INFO_COLOR = Color.BLUE;
 
     private JFrame frame;
     private JComboBox<DataSourceBase> dataSourceCombo;
@@ -39,10 +34,8 @@ public class SwingApp implements StockMarketView {
     private JFormattedTextField endDateTF;
     private JFormattedTextField beginTimeTF;
     private JFormattedTextField endTimeTF;
-    private JLabel contractLabel;
     private JLabel statusLabel;
     private JLabel connectionLabel;
-    private JProgressBar progressBar;
     private JButton connectButton;
     private JButton getDataButton;
     private JCheckBox emaCheckBox;
@@ -54,16 +47,83 @@ public class SwingApp implements StockMarketView {
     private JTextField macdsTSTF;
     private JTextField smaTSTF;
 
-    private DataSourceBase currentDataSource;
-    private ArrayList<String> intervalList;
     private StockMarketController controller;
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new SwingApp().createAndShowGUI());
     }
 
+
+    @Override
+    public Interval getSelectedInterval() {
+        return (Interval)intervalCombo.getSelectedItem();
+    }
+
+    @Override
+    public void setBeginDate(LocalDateTime date) {
+        String dateStr = TimeUtils.formatDate(date);
+        String timeStr = TimeUtils.formatTime(date);
+        beginDateTF.setText(dateStr);
+        beginTimeTF.setText(timeStr);
+    }
+
+    @Override
+    public void setEndDate(LocalDateTime date) {
+        String dateStr = TimeUtils.formatDate(date);
+        String timeStr = TimeUtils.formatTime(date);
+        endDateTF.setText(dateStr);
+        endTimeTF.setText(timeStr);
+    }
+
+    @Override
+    public LocalDateTime getBeginDate() {
+        String dateStr = beginDateTF.getText();
+        String timeStr = beginTimeTF.getText();
+        return TimeUtils.parseToLocalDateTime(dateStr, timeStr);
+    }
+
+    @Override
+    public LocalDateTime getEndDate() {
+        String dateStr = endDateTF.getText();
+        String timeStr = endTimeTF.getText();
+        return TimeUtils.parseToLocalDateTime(dateStr, timeStr);
+    }
+
+    @Override
+    public void setDataSourceOptions(List<DataSourceBase> options) {
+        dataSourceCombo.removeAllItems();
+        for (DataSourceBase option : options) {
+            dataSourceCombo.addItem(option);
+        }
+    }
+
+    @Override
+    public Quote getSelectedQuote() {
+        return (Quote) quoteCombo.getSelectedItem();
+    }
+
+    @Override
+    public void setQuoteOptions(List<Quote> quotes) {
+        quoteCombo.removeAllItems();
+        for (Quote quote : quotes) {
+            quoteCombo.addItem(quote);
+        }
+    }
+
+    @Override
+    public void setStatus(String status, Color color) {
+        connectionLabel.setText(status);
+        connectionLabel.setForeground(color);
+        connectionLabel.repaint();
+        connectionLabel.revalidate();
+    }
+
+    @Override
+    public void setError(Exception e) {
+        setStatus("ERROR: " + e.getMessage(), ERROR_TEXT_COLOR);
+    }
+
     private void createAndShowGUI() {
-        // Initialize controller
         controller = new StockMarketController(this);
 
         frame = new JFrame("Stock Market Analyzer");
@@ -97,21 +157,16 @@ public class SwingApp implements StockMarketView {
         JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         row1.add(new JLabel("Data Source:"));
         dataSourceCombo = new JComboBox<>();
-        initDataSourceList();
         dataSourceCombo.addActionListener(e -> onDataSourceChanged());
         row1.add(dataSourceCombo);
 
         connectButton = new JButton("Connect");
-        connectButton.addActionListener(e -> controller.onConnectButtonClick(e));
+        connectButton.addActionListener(e -> onConnectButtonClick());
         row1.add(connectButton);
 
         connectionLabel = new JLabel("Not Connected");
         connectionLabel.setForeground(ERROR_TEXT_COLOR);
         row1.add(connectionLabel);
-
-        progressBar = new JProgressBar(0, 100);
-        progressBar.setMaximumSize(new Dimension(150, 20));
-        row1.add(progressBar);
 
         panel.add(row1);
         panel.add(Box.createVerticalStrut(5));
@@ -132,10 +187,6 @@ public class SwingApp implements StockMarketView {
         quoteCombo.setEnabled(false);
         quoteCombo.addActionListener(e -> onQuoteChanged());
         row3.add(quoteCombo);
-
-        row3.add(new JLabel("Contract:"));
-        contractLabel = new JLabel("None");
-        row3.add(contractLabel);
 
         panel.add(row3);
         panel.add(Box.createVerticalStrut(5));
@@ -188,6 +239,9 @@ public class SwingApp implements StockMarketView {
 
         panel.add(row4);
         panel.add(Box.createVerticalStrut(10));
+
+        // Data inits
+        initDataSourceList();
 
         return panel;
     }
@@ -253,15 +307,44 @@ public class SwingApp implements StockMarketView {
         for (DataSourceBase source : dataSourceList) {
             dataSourceCombo.addItem(source);
         }
+        dataSourceCombo.setSelectedIndex(0);
     }
 
     private void onDataSourceChanged() {
-        resetConnectionState();
+        DataSourceBase selectedSource = (DataSourceBase) dataSourceCombo.getSelectedItem();
+        controller.onDataSourceChanged(selectedSource);
     }
 
     private void onQuoteChanged() {
         Quote selectedQuote = (Quote) quoteCombo.getSelectedItem();
         marketLabel.setText(selectedQuote.mic);
+    }
+
+    private void onConnectButtonClick(){
+        if(controller.getSelectedDataSource() instanceof FinamApiClient finamClient){
+            connectButton.setEnabled(false);
+            quoteCombo.setEnabled(false);
+
+            String secret = promptForFinamSecret();
+            setStatus("Connecting...", INFO_COLOR);
+
+            SwingUtilities.invokeLater(() -> {
+                controller.connectToFinam(finamClient, secret);
+                updateUIAfterConnection();
+            });
+        }
+    }
+
+    private void updateUIAfterConnection() {
+        quoteCombo.setEnabled(true);
+        List<Quote> quoteList = controller.getQuoteList();
+        setQuoteOptions(quoteList);
+
+        if (!quoteList.isEmpty()) {
+            quoteCombo.setSelectedIndex(0);
+        }
+
+        setStatus("Connected!", SUCCESSFUL_TEXT_COLOR);
     }
 
     private void onGetDataButton(ActionEvent e) {
@@ -390,126 +473,7 @@ public class SwingApp implements StockMarketView {
         // }
     }
 
-    public void resetConnectionState() {
-        currentDataSource = null;
-        marketLabel.setText("None");
-        quoteCombo.removeAllItems();
-        quoteCombo.setEnabled(false);
-        intervalCombo.removeAllItems();
-        intervalCombo.setEnabled(false);
-        getDataButton.setEnabled(false);
-        contractLabel.setText("None");
-        progressBar.setValue(0);
-        connectionLabel.setText("Not Connected");
-        connectionLabel.setForeground(ERROR_TEXT_COLOR);
-    }
-
-    private void updateStatus(String message, Color color) {
-        statusLabel.setText("Status: " + message);
-        statusLabel.setForeground(color);
-    }
-
-    // Implementation of StockMarketView interface
-    @Override
-    public DataSourceBase getSelectedDataSource() {
-        return (DataSourceBase) dataSourceCombo.getSelectedItem();
-    }
-
-    @Override
-    public void setDataSourceOptions(List<DataSourceBase> options) {
-        dataSourceCombo.removeAllItems();
-        for (DataSourceBase option : options) {
-            dataSourceCombo.addItem(option);
-        }
-    }
-
-    @Override
-    public Quote getSelectedQuote() {
-        return (Quote) quoteCombo.getSelectedItem();
-    }
-
-    @Override
-    public void setQuoteOptions(List<Quote> quotes) {
-        quoteCombo.removeAllItems();
-        for (Quote quote : quotes) {
-            quoteCombo.addItem(quote);
-        }
-    }
-
-    @Override
-    public String getBeginDate() {
-        return beginDateTF.getText();
-    }
-
-    @Override
-    public void setBeginDate(String date) {
-        beginDateTF.setText(date);
-    }
-
-    @Override
-    public String getEndDate() {
-        return endDateTF.getText();
-    }
-
-    @Override
-    public void setEndDate(String date) {
-        endDateTF.setText(date);
-    }
-
-    @Override
-    public void setContract(String contract) {
-        contractLabel.setText(contract);
-    }
-
-    @Override
-    public void setStatus(String message) {
-        statusLabel.setText("Status: " + message);
-        // Determine color based on message content
-        if (message.contains("ERROR")) {
-            statusLabel.setForeground(ERROR_TEXT_COLOR);
-        } else if (message.contains("Connected successfully")) {
-            statusLabel.setForeground(SUCCESSFUL_TEXT_COLOR);
-        } else {
-            statusLabel.setForeground(Color.BLUE);
-        }
-    }
-
-    @Override
-    public void setConnectionStatus(String status) {
-        connectionLabel.setText(status);
-        // Determine color based on status content
-        if (status.equals("Connected")) {
-            connectionLabel.setForeground(SUCCESSFUL_TEXT_COLOR);
-        } else if (status.equals("Failed")) {
-            connectionLabel.setForeground(ERROR_TEXT_COLOR);
-        } else {
-            connectionLabel.setForeground(Color.BLUE);
-        }
-    }
-
-    @Override
-    public void setProgress(int value) {
-        progressBar.setValue(value);
-    }
-
-    @Override
-    public void enableConnectButton(boolean enabled) {
-        connectButton.setEnabled(enabled);
-    }
-
-    @Override
-    public void enableGetDataButton(boolean enabled) {
-        getDataButton.setEnabled(enabled);
-    }
-
-    @Override
-    public void showMessage(String message, String title) {
-        JOptionPane.showMessageDialog(frame, message, title, JOptionPane.ERROR_MESSAGE);
-    }
-
-    @Override
-    public String promptForSecret() {
-        // Create a custom dialog for secret input
+    private String promptForFinamSecret() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
 
@@ -533,65 +497,5 @@ public class SwingApp implements StockMarketView {
             return new String(passwordField.getPassword());
         }
         return null;
-    }
-
-    @Override
-    public boolean isEmaSelected() {
-        return emaCheckBox != null && emaCheckBox.isSelected();
-    }
-
-    @Override
-    public boolean isMacdSelected() {
-        return macdCheckBox != null && macdCheckBox.isSelected();
-    }
-
-    @Override
-    public boolean isSmaSelected() {
-        return smaCheckBox != null && smaCheckBox.isSelected();
-    }
-
-    @Override
-    public int getEmaTimeSeries() {
-        try {
-            return emaTSTF != null ? Integer.parseInt(emaTSTF.getText()) : 6;
-        } catch (NumberFormatException e) {
-            return 6;
-        }
-    }
-
-    @Override
-    public double getEmaScaleFactor() {
-        try {
-            return emaSFTF != null ? Double.parseDouble(emaSFTF.getText()) : 0.5;
-        } catch (NumberFormatException e) {
-            return 0.5;
-        }
-    }
-
-    @Override
-    public int getMacdFastTimeSeries() {
-        try {
-            return macdfTSTF != null ? Integer.parseInt(macdfTSTF.getText()) : 12;
-        } catch (NumberFormatException e) {
-            return 12;
-        }
-    }
-
-    @Override
-    public int getMacdSlowTimeSeries() {
-        try {
-            return macdsTSTF != null ? Integer.parseInt(macdsTSTF.getText()) : 26;
-        } catch (NumberFormatException e) {
-            return 26;
-        }
-    }
-
-    @Override
-    public int getSmaTimeSeries() {
-        try {
-            return smaTSTF != null ? Integer.parseInt(smaTSTF.getText()) : 20;
-        } catch (NumberFormatException e) {
-            return 20;
-        }
     }
 }

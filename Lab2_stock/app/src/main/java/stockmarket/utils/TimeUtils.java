@@ -37,5 +37,13 @@ public class TimeUtils {
                 LocalTime.parse(time, DateTimeFormatter.ofPattern(TIME_FORMAT))
         );
     }
+
+    public static String formatDate(LocalDateTime dateTime) {
+        return dateTime.format(DateTimeFormatter.ofPattern(DATE_FORMAT));
+    }
+
+    public static String formatTime(LocalDateTime dateTime) {
+        return dateTime.format(DateTimeFormatter.ofPattern(TIME_FORMAT));
+    }
 }
 

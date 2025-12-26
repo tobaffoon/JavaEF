@@ -263,17 +263,17 @@ public class JfreeCandlestickChart extends JPanel {
      * @param t the t
      */
     public void addCandle(long time, double o, double h, double l, double c, long v, String date) {
-        try {
-            // Add bar to the data. Let's repeat the same bar
-            Date inputDate = simpleDateFormat.parse(date);
-            FixedMillisecond t = new FixedMillisecond(
-                    READABLE_TIME_FORMAT.parse(date + " " + TimeUtils.convertToReadableTime(time)));
-            ohlcSeries.add(t, o, h, l, c);
-            volumeSeries.add(t, v);
-            timeList.add(t);
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
+        // try {
+        //     // Add bar to the data. Let's repeat the same bar
+        //     Date inputDate = simpleDateFormat.parse(date);
+        //     FixedMillisecond t = new FixedMillisecond(
+        //             READABLE_TIME_FORMAT.parse(date + " " + TimeUtils.convertToReadableTime(time)));
+        //     ohlcSeries.add(t, o, h, l, c);
+        //     volumeSeries.add(t, v);
+        //     timeList.add(t);
+        // } catch (ParseException e) {
+        //     e.printStackTrace();
+        // }
     }
 
     public boolean setInterval(String interval, ArrayList<String> intervalList, JLabel infoLabel) {

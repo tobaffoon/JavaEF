@@ -18,6 +18,7 @@ import java.util.Map;
 public class FinamApiClient implements DataSourceBase {
 
     private static final String API_BASE_URL = "https://api.finam.ru/v1/";
+    private static final String AUTH_URL = API_BASE_URL + "sessions";
     private static final String ASSETS_URL = API_BASE_URL + "assets";
     private static final String EXCHANGES_URL = API_BASE_URL + "exchanges";
 
@@ -81,6 +82,8 @@ public class FinamApiClient implements DataSourceBase {
                 .build();
         
         try (Response response = httpClient.newCall(request).execute()) {
+            System.out.println("Fetching assets and markets from Finam...");
+
             String responseBody = response.body().string();
             
             System.out.println("Assets API response status: " + response.code());
@@ -101,21 +104,17 @@ public class FinamApiClient implements DataSourceBase {
         return quoteList;
     }
 
-    private String authenticateWithFinam() throws IOException {
-        String authUrl = API_BASE_URL + "sessions";
-        
+    private String authenticateWithFinam() throws IOException {        
         // Create JSON request body
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("secret", secretToken);
-        
-        System.out.println("Sending authentication request to " + authUrl);
         
         // Create request with JSON body
         okhttp3.MediaType jsonMediaType = okhttp3.MediaType.get("application/json; charset=utf-8");
         okhttp3.RequestBody body = okhttp3.RequestBody.create(requestBody.toString(), jsonMediaType);
         
         Request request = new Request.Builder()
-                .url(authUrl)
+                .url(AUTH_URL)
                 .post(body)
                 .build();
         
