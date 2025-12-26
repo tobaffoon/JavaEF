@@ -264,37 +264,30 @@ public class FinamApiClient implements DataSourceBase {
             }
             JsonObject asset = assetElement.getAsJsonObject();
             
-            String ticker = "";
-            String isin = "";
             String mic = "";
             String name = "";
             
-            if (asset.has("ticker")) {
-                ticker = asset.get("ticker").getAsString();
-            }            
-            if (asset.has("isin")) {
-                isin = asset.get("isin").getAsString();
-            }
             if (asset.has("mic")) {
-                mic = asset.get("mic").getAsString();
+                mic = asset.get("mic").getAsString().trim();
             }
             if (asset.has("name")) {
-                name = asset.get("name").getAsString();
+                name = asset.get("name").getAsString().trim();
             }
             
-            Quote quote = new Quote();
-            quote.ticker = ticker;
-            quote.isin = isin;
-            quote.name = name;
-            if(exchangesNames.containsKey(mic)){
-                quote.mic = exchangesNames.get(mic);
-            } else{
-                quote.mic = mic;
+            if(name.isEmpty()){
+                continue;
             }
 
+            if(exchangesNames.containsKey(mic)){
+                mic = exchangesNames.get(mic);
+            }
+            
+            Quote quote = new Quote(name, mic);
             quoteList.add(quote);
         }
         
+        quoteList.sort((q1, q2) -> q1.name.compareToIgnoreCase(q2.name));
+
         System.out.println("Successfully loaded " + quoteList.size() + " assets from API");               
     
         return quoteList;
