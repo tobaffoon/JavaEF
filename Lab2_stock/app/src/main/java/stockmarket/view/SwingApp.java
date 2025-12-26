@@ -1,6 +1,10 @@
 package stockmarket.view;
 
 import stockmarket.control.StockMarketController;
+import stockmarket.indicators.EMAIndicator;
+import stockmarket.indicators.Indicator;
+import stockmarket.indicators.MACDIndicator;
+import stockmarket.indicators.SMAIndicator;
 import stockmarket.io.DataSourceBase;
 import stockmarket.io.FinamApiClient;
 import stockmarket.model.Quote;
@@ -10,6 +14,10 @@ import stockmarket.utils.TimeUtils;
 
 import javax.swing.*;
 import javax.swing.text.MaskFormatter;
+
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.XYPlot;
+
 import java.awt.*;
 import java.text.ParseException;
 import java.time.LocalDateTime;
@@ -40,13 +48,16 @@ public class SwingApp implements StockMarketView {
     private JCheckBox emaCheckBox;
     private JCheckBox macdCheckBox;
     private JCheckBox smaCheckBox;
-    private JTextField emaTSTF;
-    private JTextField emaSFTF;
-    private JTextField macdfTSTF;
-    private JTextField macdsTSTF;
-    private JTextField smaTSTF;
     private JPanel chartContainer;
-
+    private JComboBox<Indicator> indicatorCombo;
+    private JTextField periodTF;
+    private JTextField fastTF;
+    private JTextField slowTF;
+    private JCheckBox separateChartCB;
+    private JButton addIndicatorBtn;
+    private JButton removeIndicatorBtn;
+    
+    private final List<Indicator> activeIndicators = new ArrayList<>();
     private StockMarketController controller;
 
     public static void main(String[] args) {
@@ -142,6 +153,12 @@ public class SwingApp implements StockMarketView {
         chartContainer = new JPanel(new BorderLayout());
         chartContainer.setBorder(BorderFactory.createTitledBorder("Chart"));
         frame.add(chartContainer, BorderLayout.CENTER);
+
+        chartContainer = new JPanel();
+        chartContainer.setLayout(new BoxLayout(chartContainer, BoxLayout.Y_AXIS));
+
+        frame.add(new JScrollPane(chartContainer), BorderLayout.CENTER);
+        frame.add(createIndicatorPanel(), BorderLayout.EAST);
 
         // Status bar
         JPanel statusPanel = createStatusPanel();
@@ -250,49 +267,107 @@ public class SwingApp implements StockMarketView {
         return panel;
     }
 
-    private JPanel createSettingsPanel() {
+    private JPanel createIndicatorPanel() {
         JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createTitledBorder("Indicator Settings"));
-        panel.add(Box.createVerticalStrut(10));
+        panel.setBorder(BorderFactory.createTitledBorder("Indicators"));
+        panel.setLayout(new GridBagLayout());
 
-        // EMA Settings
-        JPanel emaPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        emaCheckBox = new JCheckBox("EMA Indicator", true);
-        emaPanel.add(emaCheckBox);
-        emaPanel.add(new JLabel("Time Series:"));
-        emaTSTF = new JTextField("6", 5);
-        emaPanel.add(emaTSTF);
-        emaPanel.add(new JLabel("Scale Factor:"));
-        emaSFTF = new JTextField("0.5", 5);
-        emaPanel.add(emaSFTF);
-        panel.add(emaPanel);
-        panel.add(Box.createVerticalStrut(5));
+        GridBagConstraints c = new GridBagConstraints();
+        c.insets = new Insets(4, 4, 4, 4);
+        c.fill = GridBagConstraints.HORIZONTAL;
 
-        // MACD Settings
-        JPanel macdPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        macdCheckBox = new JCheckBox("MACD Indicator", true);
-        macdPanel.add(macdCheckBox);
-        macdPanel.add(new JLabel("Fast TS:"));
-        macdfTSTF = new JTextField("12", 5);
-        macdPanel.add(macdfTSTF);
-        macdPanel.add(new JLabel("Slow TS:"));
-        macdsTSTF = new JTextField("26", 5);
-        macdPanel.add(macdsTSTF);
-        panel.add(macdPanel);
-        panel.add(Box.createVerticalStrut(5));
+        indicatorCombo = new JComboBox<>();
+        initIndicators();
+        indicatorCombo.addActionListener(e -> updateIndicatorFields());
 
-        // SMA Settings
-        JPanel smaPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        smaCheckBox = new JCheckBox("SMA Indicator", true);
-        smaPanel.add(smaCheckBox);
-        smaPanel.add(new JLabel("Time Series:"));
-        smaTSTF = new JTextField("20", 5);
-        smaPanel.add(smaTSTF);
-        panel.add(smaPanel);
-        panel.add(Box.createVerticalStrut(10));
+        periodTF = new JTextField("14", 6);
+        fastTF = new JTextField("12", 6);
+        slowTF = new JTextField("26", 6);
 
+        separateChartCB = new JCheckBox("Separate chart", true);
+
+        addIndicatorBtn = new JButton("Add");
+        addIndicatorBtn.addActionListener(e -> onAddIndicator());
+
+        removeIndicatorBtn = new JButton("Remove all");
+        removeIndicatorBtn.addActionListener(e -> onRemoveIndicators());
+
+        int row = 0;
+
+        c.gridy = row++; panel.add(new JLabel("Indicator:"), c);
+        c.gridy = row++; panel.add(indicatorCombo, c);
+
+        c.gridy = row++; panel.add(new JLabel("Period:"), c);
+        c.gridy = row++; panel.add(periodTF, c);
+
+        c.gridy = row++; panel.add(new JLabel("Fast / Slow:"), c);
+        c.gridy = row++;
+        JPanel fs = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
+        fs.add(fastTF);
+        fs.add(slowTF);
+        panel.add(fs, c);
+
+        c.gridy = row++; panel.add(separateChartCB, c);
+        c.gridy = row++; panel.add(addIndicatorBtn, c);
+        c.gridy = row++; panel.add(removeIndicatorBtn, c);
+
+        updateIndicatorFields();
         return panel;
+    }
+
+    private void onAddIndicator() {
+        Indicator indicator = (Indicator) indicatorCombo.getSelectedItem();
+
+        if(indicator instanceof EMAIndicator emaIndicator){
+            emaIndicator.setPeriod(
+                    Integer.parseInt(periodTF.getText())
+            );
+        }
+        else if(indicator instanceof SMAIndicator smaIndicator){
+            smaIndicator.setPeriod(
+                    Integer.parseInt(periodTF.getText())
+            );
+        }
+        else if(indicator instanceof MACDIndicator macdIndicator){
+            macdIndicator.setPeriods(
+                    Integer.parseInt(fastTF.getText()),
+                    Integer.parseInt(slowTF.getText())
+            );
+        }
+
+        activeIndicators.add(indicator);
+        rebuildCharts();
+    }
+
+    private void onRemoveIndicators() {
+        activeIndicators.clear();
+        rebuildCharts();
+    }
+
+    private void rebuildCharts() {
+        chartContainer.removeAll();
+
+        List<Bar> bars = controller.getLastBars();
+        if (bars == null || bars.isEmpty()) return;
+
+        for (Indicator indicator : activeIndicators) {
+            XYPlot plot = controller.buildIndicatorPlot(bars, indicator);
+            JFreeChart chart = new JFreeChart(plot);
+            chartContainer.add(new org.jfree.chart.ChartPanel(chart));
+        }
+
+        chartContainer.revalidate();
+        chartContainer.repaint();
+}
+
+
+    private void updateIndicatorFields() {
+        Indicator indicator = (Indicator) indicatorCombo.getSelectedItem();
+
+        boolean isMacd = indicator instanceof stockmarket.indicators.MACDIndicator;
+        periodTF.setEnabled(!isMacd);
+        fastTF.setEnabled(isMacd);
+        slowTF.setEnabled(isMacd);
     }
 
     private JPanel createStatusPanel() {
@@ -318,6 +393,12 @@ public class SwingApp implements StockMarketView {
         for (Interval interval : Interval.values()) {
             intervalCombo.addItem(interval);
         }
+    }
+
+    private void initIndicators() {
+        indicatorCombo.addItem(new EMAIndicator());
+        indicatorCombo.addItem(new MACDIndicator());
+        indicatorCombo.addItem(new SMAIndicator());
     }
 
     private void onDataSourceChanged() {
@@ -419,26 +500,12 @@ public class SwingApp implements StockMarketView {
     ) {
         chartContainer.removeAll();
 
-        IndicatorConfig indicatorConfig = new IndicatorConfig(
-                emaCheckBox != null && emaCheckBox.isSelected(),
-                macdCheckBox != null && macdCheckBox.isSelected(),
-                smaCheckBox != null && smaCheckBox.isSelected(),
-                // EMA
-                6,      
-                0.5,
-                // MACD
-                12,
-                26,
-                // SMA
-                20
-        );
-
         String title = quote.symbol() + " | " +
                 TimeUtils.formatDate(begin) + " - " +
                 TimeUtils.formatDate(end);
 
         CandlestickChartPanel chartPanel =
-                new CandlestickChartPanel(title, bars, indicatorConfig);
+                new CandlestickChartPanel(title, bars);
 
         org.jfree.chart.ChartPanel jfChartPanel =
         new org.jfree.chart.ChartPanel(

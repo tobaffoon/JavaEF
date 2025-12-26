@@ -3,11 +3,13 @@ package stockmarket.indicators;
 import java.util.List;
 
 public final class EMAIndicator extends Indicator {
+    private int period;
+    private double alpha;
 
-    private final int period;
-    private final double alpha;
+    public EMAIndicator() {
+    }
 
-    public EMAIndicator(int period) {
+    public void setPeriod(int period) {
         if (period <= 0) {
             throw new IllegalArgumentException("Period must be positive");
         }
@@ -29,5 +31,10 @@ public final class EMAIndicator extends Indicator {
     @Override
     public int warmupPeriod() {
         return period;
+    }
+
+    @Override
+    public String toString() {
+        return "EMA";
     }
 }

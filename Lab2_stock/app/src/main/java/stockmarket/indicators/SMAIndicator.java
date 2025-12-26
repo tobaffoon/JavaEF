@@ -3,9 +3,12 @@ package stockmarket.indicators;
 import java.util.List;
 
 public final class SMAIndicator extends Indicator {
-    private final int period;
+    private int period;
 
-    public SMAIndicator(int period) {
+    public SMAIndicator() {
+    }
+
+    public void setPeriod(int period) {
         if (period <= 0) {
             throw new IllegalArgumentException("Period must be positive");
         }
@@ -26,5 +29,10 @@ public final class SMAIndicator extends Indicator {
     @Override
     public int warmupPeriod() {
         return period;
+    }
+
+    @Override
+    public String toString() {
+        return "SMA";
     }
 }

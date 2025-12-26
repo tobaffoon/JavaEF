@@ -21,26 +21,18 @@ public final class CandlestickChartPanel extends JPanel {
 
     private final JFreeChart chart;
 
-    public CandlestickChartPanel(
-            String title,
-            List<Bar> bars,
-            IndicatorConfig indicators
-    ) {
-        this.chart = buildChart(title, bars, indicators);
+    public CandlestickChartPanel(String title, List<Bar> bars) {
+        this.chart = buildChart(title, bars);
     }
 
     public JFreeChart getChart() {
         return chart;
     }
 
-    private JFreeChart buildChart(
-            String title,
-            List<Bar> bars,
-            IndicatorConfig indicators
-    ) {
+    private JFreeChart buildChart(String title, List<Bar> bars) {
         BarSeriesBuilder barBuilder = new BarSeriesBuilder(bars);
         IndicatorSeriesBuilder indicatorBuilder =
-                new IndicatorSeriesBuilder(bars, indicators);
+                new IndicatorSeriesBuilder(bars);
 
         /* ---- Price (candles) ---- */
         OHLCSeriesCollection priceDataset = barBuilder.buildOhlcDataset();
@@ -74,14 +66,11 @@ public final class CandlestickChartPanel extends JPanel {
         );
         volumePlot.setBackgroundPaint(Color.WHITE);
 
-        /* ---- Indicators ---- */
         CombinedDomainXYPlot combinedPlot =
                 new CombinedDomainXYPlot(createDateAxis());
 
         combinedPlot.add(pricePlot, 3);
         combinedPlot.add(volumePlot, 1);
-
-        indicatorBuilder.buildPlots().forEach(p -> combinedPlot.add(p, 1));
 
         combinedPlot.setOrientation(PlotOrientation.VERTICAL);
 

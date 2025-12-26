@@ -1,11 +1,13 @@
 package stockmarket.control;
 
+import stockmarket.indicators.Indicator;
 import stockmarket.io.DataSourceBase;
 import stockmarket.io.FinamApiClient;
 import stockmarket.model.Bar;
 import stockmarket.model.Interval;
 import stockmarket.model.Quote;
 import stockmarket.view.StockMarketView;
+import stockmarket.view.IndicatorSeriesBuilder;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -14,6 +16,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.jfree.chart.plot.XYPlot;
+
 public class StockMarketController {
     private static final int SCALE = 10;
 
@@ -21,6 +25,7 @@ public class StockMarketController {
     private ArrayList<DataSourceBase> dataSourceList;
     private DataSourceBase selectedDataSource;
     private List<Quote> quoteList;
+    private List<Bar> barList;
 
     public StockMarketController(StockMarketView view) {
         this.view = view;
@@ -33,6 +38,10 @@ public class StockMarketController {
     
     public ArrayList<DataSourceBase> getDataSourceList(){
         return dataSourceList;
+    }
+
+    public List<Bar> getLastBars(){
+        return barList;
     }
 
     public List<Bar> getBars(
@@ -69,8 +78,16 @@ public class StockMarketController {
         }
 
         System.out.println("Total bars after yearly split: " + result.size());
+
+        barList = result;
+
         return result;
     }
+
+    public XYPlot buildIndicatorPlot(List<Bar> bars, Indicator indicator) {
+        return new IndicatorSeriesBuilder(bars).buildPlot(indicator);
+    }
+
 
     public DataSourceBase getSelectedDataSource() {
         return selectedDataSource;
