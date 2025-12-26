@@ -57,6 +57,7 @@ public class SwingApp implements StockMarketView {
     private JPanel indicatorsPanel;
 
     private final List<Indicator> activeIndicators = new ArrayList<>();
+    private final List<Indicator> allIndicators = new ArrayList<>();
     private StockMarketController controller;
 
     public static void main(String[] args) {
@@ -340,11 +341,13 @@ public class SwingApp implements StockMarketView {
         }
 
         activeIndicators.add(indicator);
+        updateIndicatorCombo();
         rebuildCharts();
     }
 
     private void onRemoveIndicators() {
         activeIndicators.clear();
+        updateIndicatorCombo();
         rebuildCharts();
     }
 
@@ -355,6 +358,9 @@ public class SwingApp implements StockMarketView {
         if (bars == null || bars.isEmpty()) return;
 
         for (Indicator indicator : activeIndicators) {
+            if(indicator == null) {
+                continue;
+            }
             XYPlot plot = controller.buildIndicatorPlot(bars, indicator);
             JFreeChart chart = new JFreeChart(plot);
             ChartPanel chartPanel = new ChartPanel(
@@ -415,9 +421,19 @@ public class SwingApp implements StockMarketView {
     }
 
     private void initIndicators() {
-        indicatorCombo.addItem(new EMAIndicator());
-        indicatorCombo.addItem(new MACDIndicator());
-        indicatorCombo.addItem(new SMAIndicator());
+        allIndicators.add(new EMAIndicator());
+        allIndicators.add(new MACDIndicator());
+        allIndicators.add(new SMAIndicator());
+        updateIndicatorCombo();
+    }
+
+    private void updateIndicatorCombo() {
+        indicatorCombo.removeAllItems();
+        for (Indicator indicator : allIndicators) {
+            if (!activeIndicators.contains(indicator)) {
+                indicatorCombo.addItem(indicator);
+            }
+        }
     }
 
     private void onDataSourceChanged() {
