@@ -2,28 +2,32 @@ package stockmarket.indicators;
 
 import java.util.List;
 
-/**
- * MACD (Moving Average Convergence Divergence) indicator implementation.
- * Reference: https://pro-ts.ru/indikatory-foreks/63-indikator-macd
- * Typically uses periods 12 and 26.
- */
-public class MACDIndicator extends IndicatorBase {
-  /**
-   * Calculates the MACD indicator with specified fast and slow EMA widths.
-   */
-  public static double calculateMacd(List<Double> data, int begin,
-      int fastEmaWidth, int slowEmaWidth) {
-    var macdFastEma = EMAIndicator.calculateEma(data,
-        2.0 / (1 + fastEmaWidth - begin), begin, fastEmaWidth);
-    var macdSlowEma = EMAIndicator.calculateEma(data,
-        2.0 / (1 + slowEmaWidth - begin), begin, slowEmaWidth);
-    return macdFastEma - macdSlowEma;
-  }
+public final class MACDIndicator extends Indicator {
 
-  /**
-   * Calculates the MACD indicator with default periods (12, 26).
-   */
-  public static double calculateMacd(List<Double> data, int begin) {
-    return calculateMacd(data, begin, 12, 26);
-  }
+    private final EMAIndicator fastEma;
+    private final EMAIndicator slowEma;
+
+    public MACDIndicator(int fastPeriod, int slowPeriod) {
+        if (fastPeriod >= slowPeriod) {
+            throw new IllegalArgumentException(
+                "Fast period must be smaller than slow period"
+            );
+        }
+        this.fastEma = new EMAIndicator(fastPeriod);
+        this.slowEma = new EMAIndicator(slowPeriod);
+    }
+
+    @Override
+    public double compute(List<Double> values, int index) {
+        requireIndex(values, index);
+
+        double fast = fastEma.compute(values, index);
+        double slow = slowEma.compute(values, index);
+        return fast - slow;
+    }
+
+    @Override
+    public int warmupPeriod() {
+        return slowEma.warmupPeriod();
+    }
 }

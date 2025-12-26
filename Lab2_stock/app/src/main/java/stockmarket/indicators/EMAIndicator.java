@@ -2,21 +2,32 @@ package stockmarket.indicators;
 
 import java.util.List;
 
-/**
- * Exponential Moving Average (EMA) indicator implementation.
- * Reference: https://pro-ts.ru/indikatory-foreks/1555-indikator-ema
- */
-public class EMAIndicator extends IndicatorBase {
-  /**
-   * Calculates the Exponential Moving Average for forex data.
-   */
-  public static double calculateEma(List<Double> close, double pricePercent,
-      int beginTime, int time) {
-    if (time > beginTime + 1 && time < close.size()) {
-      return close.get(time) * pricePercent + (calculateEma(close, pricePercent,
-          beginTime, time - 1) * (1 - pricePercent));
-    } else {
-      return 0;
+public final class EMAIndicator extends Indicator {
+
+    private final int period;
+    private final double alpha;
+
+    public EMAIndicator(int period) {
+        if (period <= 0) {
+            throw new IllegalArgumentException("Period must be positive");
+        }
+        this.period = period;
+        this.alpha = 2.0 / (period + 1);
     }
-  }
+
+    @Override
+    public double compute(List<Double> values, int index) {
+        requireIndex(values, index);
+
+        double ema = values.get(index - period + 1);
+        for (int i = index - period + 2; i <= index; i++) {
+            ema = alpha * values.get(i) + (1 - alpha) * ema;
+        }
+        return ema;
+    }
+
+    @Override
+    public int warmupPeriod() {
+        return period;
+    }
 }

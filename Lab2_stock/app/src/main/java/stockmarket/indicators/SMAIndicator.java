@@ -2,20 +2,29 @@ package stockmarket.indicators;
 
 import java.util.List;
 
-/**
- * Simple Moving Average (SMA) indicator implementation.
- */
-public class SMAIndicator extends IndicatorBase {
-  /**
-   * Calculates the Simple Moving Average.
-   */
-  public static double calculateSma(List<Double> data, int begin, int step) {
-    Double result = 0.0;
-    int i = begin;
-    for (; i < begin + step && i < data.size(); ++i) {
-      result += data.get(i);
+public final class SMAIndicator extends Indicator {
+    private final int period;
+
+    public SMAIndicator(int period) {
+        if (period <= 0) {
+            throw new IllegalArgumentException("Period must be positive");
+        }
+        this.period = period;
     }
-    result /= (i - begin);
-    return result;
-  }
+
+    @Override
+    public double compute(List<Double> values, int index) {
+        requireIndex(values, index);
+
+        double sum = 0.0;
+        for (int i = index - period + 1; i <= index; i++) {
+            sum += values.get(i);
+        }
+        return sum / period;
+    }
+
+    @Override
+    public int warmupPeriod() {
+        return period;
+    }
 }
