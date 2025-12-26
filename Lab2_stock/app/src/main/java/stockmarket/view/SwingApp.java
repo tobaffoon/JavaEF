@@ -1,5 +1,39 @@
 package stockmarket.view;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.text.ParseException;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JFormattedTextField;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.text.MaskFormatter;
+
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.XYPlot;
+
 import stockmarket.control.StockMarketController;
 import stockmarket.indicators.EMAIndicator;
 import stockmarket.indicators.Indicator;
@@ -7,23 +41,10 @@ import stockmarket.indicators.MACDIndicator;
 import stockmarket.indicators.SMAIndicator;
 import stockmarket.io.DataSourceBase;
 import stockmarket.io.FinamApiClient;
-import stockmarket.model.Quote;
 import stockmarket.model.Bar;
 import stockmarket.model.Interval;
+import stockmarket.model.Quote;
 import stockmarket.utils.TimeUtils;
-
-import javax.swing.*;
-import javax.swing.text.MaskFormatter;
-
-import org.jfree.chart.ChartPanel;
-import org.jfree.chart.JFreeChart;
-import org.jfree.chart.plot.XYPlot;
-
-import java.awt.*;
-import java.text.ParseException;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 public class SwingApp implements StockMarketView {
     private static final String TIME_MASK = "##:##:##";
@@ -299,50 +320,67 @@ public class SwingApp implements StockMarketView {
 
         int row = 0;
 
-        c.gridy = row++; panel.add(new JLabel("Indicator:"), c);
-        c.gridy = row++; panel.add(indicatorCombo, c);
+        c.gridy = row++; 
+        panel.add(new JLabel("Indicator:"), c);
+        c.gridy = row++; 
+        panel.add(indicatorCombo, c);
 
-        c.gridy = row++; panel.add(new JLabel("Period:"), c);
-        c.gridy = row++; panel.add(periodTF, c);
+        c.gridy = row++; 
+        panel.add(new JLabel("Period:"), c);
+        c.gridy = row++; 
+        panel.add(periodTF, c);
 
-        c.gridy = row++; panel.add(new JLabel("Fast / Slow:"), c);
+        c.gridy = row++; 
+        panel.add(new JLabel("Fast / Slow:"), c);
         c.gridy = row++;
         JPanel fs = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
         fs.add(fastTF);
         fs.add(slowTF);
         panel.add(fs, c);
 
-        c.gridy = row++; panel.add(separateChartCB, c);
-        c.gridy = row++; panel.add(addIndicatorBtn, c);
-        c.gridy = row++; panel.add(removeIndicatorBtn, c);
+        c.gridy = row++; 
+        panel.add(separateChartCB, c);
+        c.gridy = row++; 
+        panel.add(addIndicatorBtn, c);
+        c.gridy = row++; 
+        panel.add(removeIndicatorBtn, c);
 
         updateIndicatorFields();
         return panel;
     }
 
     private void onAddIndicator() {
-        Indicator indicator = (Indicator) indicatorCombo.getSelectedItem();
+        if(controller.getLastBars() == null || controller.getLastBars().isEmpty()){
+            setExecutionStatus("No bars loaded", ERROR_TEXT_COLOR);
+            return;
+        } 
 
-        if(indicator instanceof EMAIndicator emaIndicator){
-            emaIndicator.setPeriod(
-                    Integer.parseInt(periodTF.getText())
-            );
-        }
-        else if(indicator instanceof SMAIndicator smaIndicator){
-            smaIndicator.setPeriod(
-                    Integer.parseInt(periodTF.getText())
-            );
-        }
-        else if(indicator instanceof MACDIndicator macdIndicator){
-            macdIndicator.setPeriods(
-                    Integer.parseInt(fastTF.getText()),
-                    Integer.parseInt(slowTF.getText())
-            );
-        }
+        try {
+            Indicator indicator = (Indicator) indicatorCombo.getSelectedItem();
 
-        activeIndicators.add(indicator);
-        updateIndicatorCombo();
-        rebuildCharts();
+            if(indicator instanceof EMAIndicator emaIndicator){
+                emaIndicator.setPeriod(
+                        Integer.parseInt(periodTF.getText())
+                );
+            }
+            else if(indicator instanceof SMAIndicator smaIndicator){
+                smaIndicator.setPeriod(
+                        Integer.parseInt(periodTF.getText())
+                );
+            }
+            else if(indicator instanceof MACDIndicator macdIndicator){
+                macdIndicator.setPeriods(
+                        Integer.parseInt(fastTF.getText()),
+                        Integer.parseInt(slowTF.getText())
+                );
+            }
+
+            activeIndicators.add(indicator);
+            updateIndicatorCombo();
+            rebuildCharts();
+        } catch (Exception e) {
+            setError(e);
+        }
     }
 
     private void onRemoveIndicators() {
@@ -486,11 +524,16 @@ public class SwingApp implements StockMarketView {
                 return;
             }
             setConnectionStatus("Connecting...", INFO_COLOR);
-
-            SwingUtilities.invokeLater(() -> {
+            try{
                 controller.connectToFinam(finamClient, secret);
                 updateUIAfterConnection();
-            });
+            } catch (Exception e){
+                setConnectionStatus("Not Connected", ERROR_TEXT_COLOR);
+            } finally {
+                connectButton.setEnabled(true);
+                quoteCombo.setEnabled(true);
+                getDataButton.setEnabled(true);
+            }
         }
     }
 
@@ -505,6 +548,7 @@ public class SwingApp implements StockMarketView {
         }
 
         setConnectionStatus("Connected!", SUCCESSFUL_TEXT_COLOR);
+        setExecutionStatus("Connected!", SUCCESSFUL_TEXT_COLOR);
     }
 
     private void onGetDataButton() {

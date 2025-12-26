@@ -97,11 +97,11 @@ public class StockMarketController {
         selectedDataSource = newDataSource;
     }
 
-    public void connectToFinam(FinamApiClient finamClient) {
+    public void connectToFinam(FinamApiClient finamClient) throws Exception {
         connectToFinam(finamClient, null);
     }
 
-    public void connectToFinam(FinamApiClient finamClient, String secret) {
+    public void connectToFinam(FinamApiClient finamClient, String secret) throws Exception {
         try {      
             if (secret != null) {
                 finamClient.setSecretToken(secret);
@@ -111,6 +111,7 @@ public class StockMarketController {
             quoteList = Collections.unmodifiableList(finamClient.getQuotesList());
         } catch (Exception ex) {
             view.setError(ex);
+            throw ex;
         }
     }
 
