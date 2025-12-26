@@ -357,31 +357,57 @@ public class SwingApp implements StockMarketView {
         List<Bar> bars = controller.getLastBars();
         if (bars == null || bars.isEmpty()) return;
 
-        for (Indicator indicator : activeIndicators) {
-            if(indicator == null) {
-                continue;
+        if (separateChartCB.isSelected()) {
+            // Separate charts for each indicator
+            for (Indicator indicator : activeIndicators) {
+                if(indicator == null) {
+                    continue;
+                }
+                XYPlot plot = controller.buildIndicatorPlot(bars, indicator);
+                JFreeChart chart = new JFreeChart(plot);
+                ChartPanel chartPanel = new ChartPanel(
+                    chart,
+                    false,   // properties
+                    false,   // save
+                    false,   // print
+                    false,   // zoom
+                    false    // tooltips
+                );
+                chartPanel.setPopupMenu(null);
+                chartPanel.setDomainZoomable(false);
+                chartPanel.setRangeZoomable(false);
+
+                // Reduce height
+                Dimension prefSize = chartPanel.getPreferredSize();
+                chartPanel.setPreferredSize(new Dimension(prefSize.width, (int)(prefSize.height / 4.5)));
+
+                indicatorsPanel.add(chartPanel);
             }
-            XYPlot plot = controller.buildIndicatorPlot(bars, indicator);
-            JFreeChart chart = new JFreeChart(plot);
-            ChartPanel chartPanel = new ChartPanel(
-                chart,
-                false,   // properties
-                false,   // save
-                false,   // print
-                false,   // zoom
-                false    // tooltips
-            );
-            chartPanel.setPopupMenu(null);
-            chartPanel.setDomainZoomable(false);
-            chartPanel.setRangeZoomable(false);
+        } else {
+            // Combined chart for all indicators
+            if (!activeIndicators.isEmpty()) {
+                XYPlot plot = new IndicatorSeriesBuilder(bars).buildPlot(activeIndicators);
+                JFreeChart chart = new JFreeChart(plot);
+                ChartPanel chartPanel = new ChartPanel(
+                    chart,
+                    false,   // properties
+                    false,   // save
+                    false,   // print
+                    false,   // zoom
+                    false    // tooltips
+                );
+                chartPanel.setPopupMenu(null);
+                chartPanel.setDomainZoomable(false);
+                chartPanel.setRangeZoomable(false);
 
-            // Reduce height
-            Dimension prefSize = chartPanel.getPreferredSize();
-            chartPanel.setPreferredSize(new Dimension(prefSize.width, (int)(prefSize.height / 4.5)));
+                // Reduce height
+                Dimension prefSize = chartPanel.getPreferredSize();
+                chartPanel.setPreferredSize(new Dimension(prefSize.width, (int)(prefSize.height / 4.5)));
 
-            indicatorsPanel.add(chartPanel);
+                indicatorsPanel.add(chartPanel);
+            }
         }
-        
+
         indicatorsPanel.revalidate();
         indicatorsPanel.repaint();
     }
