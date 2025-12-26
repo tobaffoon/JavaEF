@@ -337,6 +337,12 @@ public class SwingApp implements StockMarketView {
             getDataButton.setEnabled(false);
 
             String secret = promptForFinamSecret();
+            if(secret == null){
+                setExecutionStatus("Invalid secret", ERROR_TEXT_COLOR);
+                getDataButton.setEnabled(true);
+                connectButton.setEnabled(true);
+                return;
+            }
             setConnectionStatus("Connecting...", INFO_COLOR);
 
             SwingUtilities.invokeLater(() -> {
