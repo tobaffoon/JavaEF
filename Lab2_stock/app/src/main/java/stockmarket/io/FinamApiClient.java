@@ -1,22 +1,27 @@
 package stockmarket.io;
 
+import stockmarket.model.Bar;
 import stockmarket.model.Quote;
 import stockmarket.model.TradeData;
 import stockmarket.utils.ParseUtils;
+import stockmarket.utils.TimeUtils;
+
 import com.google.gson.*;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class FinamApiClient implements DataSourceBase {
-
     private static final String API_BASE_URL = "https://api.finam.ru/v1/";
     private static final String AUTH_URL = API_BASE_URL + "sessions";
     private static final String ASSETS_URL = API_BASE_URL + "assets";
@@ -157,61 +162,98 @@ public class FinamApiClient implements DataSourceBase {
         }
     }
 
-    private void parseApiResponse(String jsonResponse) throws Exception {
-        if (jsonResponse == null || jsonResponse.trim().isEmpty()) {
-            throw new Exception("Empty response body");
+    @Override
+    public List<Bar> getBars(String symbol, LocalDateTime startTime, LocalDateTime endTime) throws Exception {
+        String url = API_BASE_URL + "instruments/" + symbol + "/bars";
+        String startTimeStr = TimeUtils.formatFinamDateTime(startTime);
+        String endTimeStr = TimeUtils.formatFinamDateTime(endTime);
+
+        System.out.println("Fetching bars for symbol: " + symbol + 
+            ", from " + startTimeStr + 
+            " to " + endTimeStr);
+
+        Request request = new Request.Builder()
+                .url(url + "?interval.start_time=" + startTimeStr 
+                    + "&interval.end_time=" + endTimeStr
+                    + "&timeframe=TIME_FRAME_D"
+                )
+                .get()
+                .addHeader("Authorization", jwtToken)
+                .build();
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            String responseBody = response.body().string();
+
+            System.out.println("Bars API response status: " + response.code());
+
+            if (!response.isSuccessful()) {
+                throw new Exception("Failed to fetch bars: " + responseBody);
+            }
+
+            return parseBarsResponse(responseBody);
+        } catch (Exception e) {
+            System.out.println("Error fetching bars: " + e.getMessage());
+            throw e;
+        }
+    }
+
+    private List<Bar> parseBarsResponse(String jsonResponse) throws Exception {
+        List<Bar> bars = new ArrayList<>();
+
+        JsonObject root = JsonParser.parseString(jsonResponse).getAsJsonObject();
+        JsonArray barsArray = root.getAsJsonArray("bars");
+
+        if (barsArray == null) {
+            throw new Exception("Invalid API response format - 'bars' array not found");
         }
 
-        try {
-            JsonObject root = JsonParser.parseString(jsonResponse).getAsJsonObject();
-            JsonArray barsArray = root.getAsJsonArray("bars");
-
-            if (barsArray == null) {
-                // Check if response contains error message
-                if (root.has("error")) {
-                    throw new Exception("API Error: " + root.get("error").getAsString());
-                }
-                throw new Exception("Invalid API response format - 'bars' array not found");
-            }
-
-            if (barsArray.size() == 0) {
-                System.out.println("API returned empty bars array, using mock data");
-                return;
-            }
-
-            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
-            for (JsonElement element : barsArray) {
-                JsonObject bar = element.getAsJsonObject();
-
-                double open = bar.get("o").getAsDouble();
-                double high = bar.get("h").getAsDouble();
-                double low = bar.get("l").getAsDouble();
-                double close = bar.get("c").getAsDouble();
-                long volume = bar.get("v").getAsLong();
-                String timestamp = bar.get("ts").getAsString();
-
-                // Parse timestamp
-                LocalDateTime dateTime = LocalDateTime.parse(timestamp.substring(0, 19));
-                String dateStr = dateTime.format(dateFormatter);
-                long time = dateTime.getHour() * 3600 + dateTime.getMinute() * 60;
-
-                // TradeData tradeData = new TradeData(
-                //         config.getSelectedSymbol(),
-                //         time,
-                //         open,
-                //         close,
-                //         volume,
-                //         dateStr,
-                //         high,
-                //         low
-                // );
-                // data.add(tradeData);
-            }
-        } catch (JsonSyntaxException jsonError) {
-            throw new Exception("JSON parsing error: " + jsonError.getMessage() +
-                    ". Response may not be valid JSON. Enable lenient parsing or check API response format.");
+        if (barsArray.size() == 0) {
+            System.out.println("API returned empty bars array");
+            return bars;
         }
+
+        for (JsonElement element : barsArray) {
+            JsonObject barObj = element.getAsJsonObject();
+
+            // Parse timestamp
+            LocalDateTime timestamp = null;
+            if (barObj.has("timestamp")) {
+                String timestampStr = barObj.get("timestamp").getAsString();
+                timestamp = LocalDateTime.parse(timestampStr, DateTimeFormatter.ISO_DATE_TIME);
+            }
+
+            BigDecimal open = BigDecimal.ZERO;
+            if (barObj.has("open") && barObj.get("open").isJsonObject()) {
+                open = new BigDecimal(barObj.getAsJsonObject("open").get("value").getAsString());
+            }
+
+            BigDecimal high = BigDecimal.ZERO;
+            if (barObj.has("high") && barObj.get("high").isJsonObject()) {
+                high = new BigDecimal(barObj.getAsJsonObject("high").get("value").getAsString());
+            }
+
+            BigDecimal low = BigDecimal.ZERO;
+            if (barObj.has("low") && barObj.get("low").isJsonObject()) {
+                low = new BigDecimal(barObj.getAsJsonObject("low").get("value").getAsString());
+            }
+
+            BigDecimal close = BigDecimal.ZERO;
+            if (barObj.has("close") && barObj.get("close").isJsonObject()) {
+                close = new BigDecimal(barObj.getAsJsonObject("close").get("value").getAsString());
+            }
+
+            BigDecimal volume = BigDecimal.ZERO;
+            if (barObj.has("volume") && barObj.get("volume").isJsonObject()) {
+                volume = new BigDecimal(barObj.getAsJsonObject("volume").get("value").getAsString());
+            }
+
+            Bar bar = new Bar(timestamp, open, high, low, close, volume);
+            bars.add(bar);
+        }
+
+        System.out.println("Successfully loaded " + bars.size() + " entries from API");   
+
+        return bars;
     }
 
     private HashMap<String, String> getExchangesNames() throws Exception {
@@ -266,12 +308,16 @@ public class FinamApiClient implements DataSourceBase {
             
             String mic = "";
             String name = "";
+            String symbol = "";
             
             if (asset.has("mic")) {
                 mic = asset.get("mic").getAsString().trim();
             }
             if (asset.has("name")) {
                 name = asset.get("name").getAsString().trim();
+            }
+            if (asset.has("symbol")) {
+                symbol = asset.get("symbol").getAsString().trim();
             }
             
             if(name.isEmpty()){
@@ -281,8 +327,8 @@ public class FinamApiClient implements DataSourceBase {
             if(exchangesNames.containsKey(mic)){
                 mic = exchangesNames.get(mic);
             }
-            
-            Quote quote = new Quote(name, mic);
+
+            Quote quote = new Quote(name, mic, symbol);
             quoteList.add(quote);
         }
         

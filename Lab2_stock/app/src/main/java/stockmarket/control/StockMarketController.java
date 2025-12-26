@@ -2,6 +2,7 @@ package stockmarket.control;
 
 import stockmarket.io.DataSourceBase;
 import stockmarket.io.FinamApiClient;
+import stockmarket.model.Bar;
 import stockmarket.model.Quote;
 import stockmarket.view.StockMarketView;
 
@@ -26,6 +27,12 @@ public class StockMarketController {
     
     public ArrayList<DataSourceBase> getDataSourceList(){
         return dataSourceList;
+    }
+
+    public List<Bar> getBars(String symbol, 
+        java.time.LocalDateTime startTime, 
+        java.time.LocalDateTime endTime) throws Exception {
+        return selectedDataSource.getBars(symbol, startTime, endTime);
     }
 
     public DataSourceBase getSelectedDataSource() {

@@ -236,7 +236,7 @@ public class SwingApp implements StockMarketView {
 
         getDataButton = new JButton("Get Data");
         // getDataButton.setEnabled(false);
-        getDataButton.addActionListener(this::onGetDataButton);
+        getDataButton.addActionListener(e -> onGetDataButton());
         row4.add(getDataButton);
 
         panel.add(row4);
@@ -358,7 +358,12 @@ public class SwingApp implements StockMarketView {
         setConnectionStatus("Connected!", SUCCESSFUL_TEXT_COLOR);
     }
 
-    private void onGetDataButton(ActionEvent e) {
+    private void onGetDataButton() {
+        Quote selectedQuote = getSelectedQuote();
+        if(selectedQuote == null) {
+            setExecutionStatus("No quote selected", ERROR_TEXT_COLOR);
+            return;
+        }
         try {
             LocalDateTime beginDate = getBeginDate();
             LocalDateTime endDate = getEndDate();
@@ -371,7 +376,18 @@ public class SwingApp implements StockMarketView {
                 throw new Exception("Selected interval is too big for the specified time span.");
             }
 
-            setExecutionStatus(STATUS_READY, INFO_COLOR);
+            getDataButton.setEnabled(false);
+            setExecutionStatus("Getting bars...", INFO_COLOR);
+            String symbol = selectedQuote.symbol;
+
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    controller.getBars(symbol, beginDate, endDate);
+                    updateUIAfterBarsRequest();
+                } catch (Exception ex) {
+                    setError(ex);
+                }
+            });
         } catch (Exception ex) {
             setError(ex);
         }
@@ -497,6 +513,11 @@ public class SwingApp implements StockMarketView {
         //     getDataButton.setEnabled(true);
         //     JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         // }
+    }
+
+    private void updateUIAfterBarsRequest() {
+        getDataButton.setEnabled(true);
+        setExecutionStatus("Bars received", SUCCESSFUL_TEXT_COLOR);
     }
 
     private String promptForFinamSecret() {
