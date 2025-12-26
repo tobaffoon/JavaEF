@@ -35,15 +35,41 @@ public class StockMarketController {
         return dataSourceList;
     }
 
-    public List<Bar> getBars(String symbol, Interval interval,
-        java.time.LocalDateTime startTime, 
-        java.time.LocalDateTime endTime) throws Exception {
-        List<Bar> bars = selectedDataSource.getBars(symbol, startTime, endTime);
-        bars = aggregateByTime(bars, interval);
-                
-        System.out.println("Aggregation yeilded " + bars.size() + " entries");   
+    public List<Bar> getBars(
+        String symbol,
+        Interval interval,
+        LocalDateTime startTime,
+        LocalDateTime endTime
+    ) throws Exception {
 
-        return bars;
+        List<Bar> result = new ArrayList<>();
+
+        LocalDateTime chunkStart = startTime;
+
+        // Разделяем запрос на годовые части, чтобы избежать ограничений API
+        while (chunkStart.isBefore(endTime)) {
+            LocalDateTime chunkEnd = chunkStart
+                    .withMonth(12)
+                    .withDayOfMonth(31)
+                    .withHour(23)
+                    .withMinute(59)
+                    .withSecond(59);
+
+            if (chunkEnd.isAfter(endTime)) {
+                chunkEnd = endTime;
+            }
+
+            List<Bar> yearlyBars =
+                    selectedDataSource.getBars(symbol, chunkStart, chunkEnd);
+
+            yearlyBars = aggregateByTime(yearlyBars, interval);
+            result.addAll(yearlyBars);
+
+            chunkStart = chunkEnd.plusSeconds(1);
+        }
+
+        System.out.println("Total bars after yearly split: " + result.size());
+        return result;
     }
 
     public DataSourceBase getSelectedDataSource() {
