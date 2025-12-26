@@ -2,8 +2,6 @@ package stockmarket.io;
 
 import stockmarket.model.Bar;
 import stockmarket.model.Quote;
-import stockmarket.model.TradeData;
-import stockmarket.utils.ParseUtils;
 import stockmarket.utils.TimeUtils;
 
 import com.google.gson.*;
@@ -208,8 +206,7 @@ public class FinamApiClient implements DataSourceBase {
         }
 
         if (barsArray.size() == 0) {
-            System.out.println("API returned empty bars array");
-            return bars;
+            throw new Exception("API returned empty bars array");
         }
 
         for (JsonElement element : barsArray) {

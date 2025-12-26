@@ -4,6 +4,7 @@ import stockmarket.control.StockMarketController;
 import stockmarket.io.DataSourceBase;
 import stockmarket.io.FinamApiClient;
 import stockmarket.model.Quote;
+import stockmarket.model.Bar;
 import stockmarket.model.Interval;
 import stockmarket.utils.TimeUtils;
 
@@ -44,6 +45,7 @@ public class SwingApp implements StockMarketView {
     private JTextField macdfTSTF;
     private JTextField macdsTSTF;
     private JTextField smaTSTF;
+    private JPanel chartContainer;
 
     private StockMarketController controller;
 
@@ -137,8 +139,9 @@ public class SwingApp implements StockMarketView {
         frame.add(controlPanel, BorderLayout.NORTH);
 
         // Data and indicator settings
-        // JPanel settingsPanel = createSettingsPanel();
-        // frame.add(settingsPanel, BorderLayout.CENTER);
+        chartContainer = new JPanel(new BorderLayout());
+        chartContainer.setBorder(BorderFactory.createTitledBorder("Chart"));
+        frame.add(chartContainer, BorderLayout.CENTER);
 
         // Status bar
         JPanel statusPanel = createStatusPanel();
@@ -234,7 +237,6 @@ public class SwingApp implements StockMarketView {
         row4.add(Box.createHorizontalStrut(20));
 
         getDataButton = new JButton("Get Data");
-        // getDataButton.setEnabled(false);
         getDataButton.addActionListener(e -> onGetDataButton());
         row4.add(getDataButton);
 
@@ -359,161 +361,88 @@ public class SwingApp implements StockMarketView {
 
     private void onGetDataButton() {
         Quote selectedQuote = getSelectedQuote();
-        if(selectedQuote == null) {
+        if (selectedQuote == null) {
             setExecutionStatus("No quote selected", ERROR_TEXT_COLOR);
             return;
         }
+
         try {
             LocalDateTime beginDate = getBeginDate();
             LocalDateTime endDate = getEndDate();
             Interval interval = getSelectedInterval();
 
-            if(beginDate.isAfter(endDate)) {
+            if (beginDate.isAfter(endDate)) {
                 throw new Exception("Begin date must be before End date.");
             }
-            if(!interval.isTimeSpanSufficient(beginDate, endDate)) {
+            if (!interval.isTimeSpanSufficient(beginDate, endDate)) {
                 throw new Exception("Selected interval is too big for the specified time span.");
             }
 
             getDataButton.setEnabled(false);
-            setExecutionStatus("Getting bars...", INFO_COLOR);
-            String symbol = selectedQuote.symbol();
+            setExecutionStatus("Loading bars...", INFO_COLOR);
 
             SwingUtilities.invokeLater(() -> {
                 try {
-                    controller.getBars(symbol, interval, beginDate, endDate);
+                    List<Bar> bars = controller.getBars(
+                            selectedQuote.symbol(),
+                            interval,
+                            beginDate,
+                            endDate
+                    );
+
+                    showChart(bars, selectedQuote, beginDate, endDate);
                     updateUIAfterBarsRequest();
+
                 } catch (Exception ex) {
                     setError(ex);
+                } finally {
+                    getDataButton.setEnabled(true);
                 }
             });
+
         } catch (Exception ex) {
             setError(ex);
         }
-        // try {
-
-        //     if (currentDataSource == null) {
-        //         updateStatus("ERROR: Not connected to data source", ERROR_TEXT_COLOR);
-        //         return;
-        //     }
-
-        //     // Validate dates
-        //     String beginDateStr = beginDateTF.getText();
-        //     String endDateStr = endDateTF.getText();
-
-        //     if (!TimeUtils.isValidDate(beginDateStr)) {
-        //         updateStatus("ERROR: Begin date is invalid (format: dd.MM.yyyy)", ERROR_TEXT_COLOR);
-        //         return;
-        //     }
-        //     if (!TimeUtils.isValidDate(endDateStr)) {
-        //         updateStatus("ERROR: End date is invalid (format: dd.MM.yyyy)", ERROR_TEXT_COLOR);
-        //         return;
-        //     }
-
-        //     updateStatus("Fetching data...", Color.BLUE);
-        //     getDataButton.setEnabled(false);
-
-        //     Thread dataThread = new Thread(() -> {
-        //         try {
-        //             String[] beginDate = beginDateStr.split("\\.");
-        //             String[] endDate = endDateStr.split("\\.");
-
-        //             currentDataSource.setBeginData(
-        //                     Integer.parseInt(beginDate[0]),
-        //                     Integer.parseInt(beginDate[1]) - 1,
-        //                     Integer.parseInt(beginDate[2])
-        //             );
-        //             currentDataSource.setEndData(
-        //                     Integer.parseInt(endDate[0]),
-        //                     Integer.parseInt(endDate[1]) - 1,
-        //                     Integer.parseInt(endDate[2])
-        //             );
-
-        //             currentDataSource.getData();
-
-        //             JfreeCandlestickChart candlestickChart = new JfreeCandlestickChart("Stock Chart");
-        //             String intervalValue = (String) intervalCombo.getSelectedItem();
-        //             if (!candlestickChart.setInterval(intervalValue, intervalList, statusLabel)) {
-        //                 throw new Exception("Invalid interval");
-        //             }
-
-        //             // Add trade data to chart
-        //             for (var tradeData : currentDataSource.data) {
-        //                 candlestickChart.onTrade(tradeData);
-        //             }
-
-        //             // Configure indicators
-        //             candlestickChart.IsEma = emaCheckBox.isSelected();
-        //             candlestickChart.IsMacd = macdCheckBox.isSelected();
-        //             candlestickChart.IsSma = smaCheckBox.isSelected();
-
-        //             if (candlestickChart.IsEma || candlestickChart.IsMacd || candlestickChart.IsSma) {
-        //                 int emaTS = Integer.parseInt(emaTSTF.getText());
-        //                 double emaSF = Double.parseDouble(emaSFTF.getText());
-        //                 int macdFTS = Integer.parseInt(macdfTSTF.getText());
-        //                 int macdSTS = Integer.parseInt(macdsTSTF.getText());
-        //                 int smaTS = Integer.parseInt(smaTSTF.getText());
-
-        //                 candlestickChart.fillIndicators(
-        //                         currentDataSource.data,
-        //                         emaTS, emaSF, macdFTS, macdSTS, smaTS
-        //                 );
-        //             }
-
-        //             SwingUtilities.invokeLater(() -> {
-        //                 String chartTitle = (String) marketCombo.getSelectedItem() + " " +
-        //                         (String) quoteCombo.getSelectedItem() + " " +
-        //                         beginDateStr + " - " + endDateStr;
-
-        //                 JFreeChart chart = candlestickChart.createChart(chartTitle);
-        //                 LegendTitle legend = new LegendTitle(chart.getPlot(),
-        //                         new ColumnArrangement(HorizontalAlignment.CENTER, VerticalAlignment.CENTER, 0, 0),
-        //                         new ColumnArrangement(HorizontalAlignment.CENTER, VerticalAlignment.CENTER, 0, 0)
-        //                 );
-        //                 legend.setPosition(RectangleEdge.BOTTOM);
-        //                 legend.setHorizontalAlignment(HorizontalAlignment.CENTER);
-        //                 legend.setBackgroundPaint(Color.WHITE);
-        //                 legend.setFrame(new LineBorder());
-        //                 legend.setMargin(0, 4, 5, 6);
-        //                 chart.addLegend(legend);
-
-        //                 JFrame chartFrame = new JFrame(chartTitle);
-        //                 chartFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-                        
-        //                 // Create a panel to hold the chart
-        //                 JPanel chartPanel = new JPanel(new BorderLayout());
-        //                 chartPanel.setBackground(Color.WHITE);
-                        
-        //                 // Use JFreeChart's built-in chart panel
-        //                 org.jfree.chart.ChartPanel panel = new org.jfree.chart.ChartPanel(chart);
-        //                 chartPanel.add(panel, BorderLayout.CENTER);
-                        
-        //                 chartFrame.add(chartPanel);
-        //                 chartFrame.setSize(1000, 600);
-        //                 chartFrame.setLocationRelativeTo(frame);
-        //                 chartFrame.setVisible(true);
-
-        //                 updateStatus("Data loaded and chart created successfully (" + currentDataSource.data.size() + " records)", SUCCESSFUL_TEXT_COLOR);
-        //                 getDataButton.setEnabled(true);
-        //             });
-        //         } catch (Exception ex) {
-        //             SwingUtilities.invokeLater(() -> {
-        //                 updateStatus("ERROR: " + ex.getMessage(), ERROR_TEXT_COLOR);
-        //                 getDataButton.setEnabled(true);
-        //                 JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage(), "Data Loading Error", JOptionPane.ERROR_MESSAGE);
-        //             });
-        //         }
-        //     });
-        //     dataThread.setDaemon(true);
-        //     dataThread.start();
-
-        // } catch (Exception ex) {
-        //     updateStatus("ERROR: " + ex.getMessage(), ERROR_TEXT_COLOR);
-        //     getDataButton.setEnabled(true);
-        //     JOptionPane.showMessageDialog(frame, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        // }
     }
 
+    private void showChart(
+        List<Bar> bars,
+        Quote quote,
+        LocalDateTime begin,
+        LocalDateTime end
+    ) {
+        chartContainer.removeAll();
+
+        IndicatorConfig indicatorConfig = new IndicatorConfig(
+                emaCheckBox != null && emaCheckBox.isSelected(),
+                macdCheckBox != null && macdCheckBox.isSelected(),
+                smaCheckBox != null && smaCheckBox.isSelected(),
+                // EMA
+                6,      
+                0.5,
+                // MACD
+                12,
+                26,
+                // SMA
+                20
+        );
+
+        String title = quote.symbol() + " | " +
+                TimeUtils.formatDate(begin) + " - " +
+                TimeUtils.formatDate(end);
+
+        CandlestickChartPanel chartPanel =
+                new CandlestickChartPanel(title, bars, indicatorConfig);
+
+        org.jfree.chart.ChartPanel jfChartPanel =
+                new org.jfree.chart.ChartPanel(chartPanel.getChart());
+
+        chartContainer.add(jfChartPanel, BorderLayout.CENTER);
+        chartContainer.revalidate();
+        chartContainer.repaint();
+    }
+
+    
     private void updateUIAfterBarsRequest() {
         getDataButton.setEnabled(true);
         setExecutionStatus("Bars received", SUCCESSFUL_TEXT_COLOR);
