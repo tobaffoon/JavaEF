@@ -15,21 +15,21 @@ public enum Interval {
     ONE_WEEK("1 неделя", Duration.ofDays(7)),
     ONE_MONTH("1 месяц", Duration.ofDays(30));
 
+    public final Duration duration;
     private final String displayName;
-    private final Duration duration;
 
     private Interval(String displayName, Duration duration) {
         this.displayName = displayName;
         this.duration = duration;
     }
 
-    @Override
-    public String toString() {
-        return displayName;
-    }
-
     public boolean isTimeSpanSufficient(LocalDateTime begin, LocalDateTime end) {
         Duration timeSpan = Duration.between(begin, end);
         return timeSpan.compareTo(duration.multipliedBy(2)) >= 0;
+    }
+
+    @Override
+    public String toString() {
+        return displayName;
     }
 }

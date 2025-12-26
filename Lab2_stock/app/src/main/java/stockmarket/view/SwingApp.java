@@ -382,7 +382,7 @@ public class SwingApp implements StockMarketView {
 
             SwingUtilities.invokeLater(() -> {
                 try {
-                    controller.getBars(symbol, beginDate, endDate);
+                    controller.getBars(symbol, interval, beginDate, endDate);
                     updateUIAfterBarsRequest();
                 } catch (Exception ex) {
                     setError(ex);
