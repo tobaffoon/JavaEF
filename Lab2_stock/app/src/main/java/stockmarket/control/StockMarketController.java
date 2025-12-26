@@ -78,16 +78,16 @@ public class StockMarketController {
 
         List<Bar> result = new ArrayList<>();
 
-        LocalDateTime bucketStart = bars.get(0).getTimestamp();
+        LocalDateTime bucketStart = bars.get(0).timestamp();
         LocalDateTime bucketEnd = bucketStart.plus(interval.duration);
         List<Bar> bucket = new ArrayList<>();
 
         for (Bar bar : bars) {
-            boolean isNewBucket = bar.getTimestamp().isBefore(bucketEnd);
+            boolean isNewBucket = bar.timestamp().isBefore(bucketEnd);
             if (!isNewBucket) {
                 result.add(mean(bucket, bucketStart));
                 bucket.clear();
-                bucketStart = bar.getTimestamp();
+                bucketStart = bar.timestamp();
                 bucketEnd = bucketStart.plus(interval.duration);
             }
             bucket.add(bar);
@@ -108,11 +108,11 @@ public class StockMarketController {
         BigDecimal volume = BigDecimal.ZERO;
 
         for (Bar bar : bars) {
-            open = open.add(bar.getOpen());
-            high = high.add(bar.getHigh());
-            low = low.add(bar.getLow());
-            close = close.add(bar.getClose());
-            volume = volume.add(bar.getVolume());
+            open = open.add(bar.open());
+            high = high.add(bar.high());
+            low = low.add(bar.low());
+            close = close.add(bar.close());
+            volume = volume.add(bar.volume());
         }
 
         BigDecimal count = BigDecimal.valueOf(bars.size());

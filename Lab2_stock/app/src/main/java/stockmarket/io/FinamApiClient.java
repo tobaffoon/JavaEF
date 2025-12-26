@@ -332,7 +332,7 @@ public class FinamApiClient implements DataSourceBase {
             quoteList.add(quote);
         }
         
-        quoteList.sort((q1, q2) -> q1.name.compareToIgnoreCase(q2.name));
+        quoteList.sort((q1, q2) -> q1.name().compareToIgnoreCase(q2.name()));
 
         System.out.println("Successfully loaded " + quoteList.size() + " assets from API");               
     

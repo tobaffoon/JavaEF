@@ -10,7 +10,6 @@ import stockmarket.utils.TimeUtils;
 import javax.swing.*;
 import javax.swing.text.MaskFormatter;
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.text.ParseException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -326,7 +325,7 @@ public class SwingApp implements StockMarketView {
 
     private void onQuoteChanged() {
         Quote selectedQuote = (Quote) quoteCombo.getSelectedItem();
-        marketLabel.setText(selectedQuote.mic);
+        marketLabel.setText(selectedQuote.mic());
     }
 
     private void onConnectButtonClick(){
@@ -378,7 +377,7 @@ public class SwingApp implements StockMarketView {
 
             getDataButton.setEnabled(false);
             setExecutionStatus("Getting bars...", INFO_COLOR);
-            String symbol = selectedQuote.symbol;
+            String symbol = selectedQuote.symbol();
 
             SwingUtilities.invokeLater(() -> {
                 try {
